@@ -251,6 +251,7 @@ public class Classification {
 					resultats.put(arffFile.getName(), resultat);
 					System.out.println(arffFile.getName());
 					System.out.println(resultat.toSummaryString("\nResults\n======\n", false));
+					System.out.println(resultat.toClassDetailsString("\n=== Detailed Accuracy By Class ===\n"));
 					System.out.println(resultat.toMatrixString("\nMatrice\n======\n"));
 					double[] evaluateScore = classification.evaluateScore(evaluation);
 					System.out.printf("Score: %f,max score %f\n", evaluateScore[0], evaluateScore[1]);
