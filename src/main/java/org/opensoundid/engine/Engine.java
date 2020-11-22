@@ -10,16 +10,18 @@ import org.opensoundid.configuration.EngineConfiguration;
 import org.opensoundid.model.impl.FeaturesSpecifications;
 
 public class Engine {
-	
-	public Engine(EngineConfiguration engineConfiguration) {
-		this.engineConfiguration = engineConfiguration;
-		featuresSpecifications = new FeaturesSpecifications(engineConfiguration);
 
-	}
 	private static final Logger logger = LogManager.getLogger(Engine.class);
 	EngineConfiguration engineConfiguration;
 	FeaturesSpecifications featuresSpecifications;
+	double percentile;
 
+	public Engine(EngineConfiguration engineConfiguration) {
+		this.engineConfiguration = engineConfiguration;
+		featuresSpecifications = new FeaturesSpecifications(engineConfiguration);
+		percentile = engineConfiguration.getDouble("engine.percentile");
+
+	}
 
 	public Map<Integer, Long> computeScore(double[][] resultat) {
 
@@ -30,7 +32,7 @@ public class Engine {
 
 		for (int i = 0; i < resultat.length; i++) {
 			for (int j = 0; j < resultat[i].length; j++) {
-				if ((aggregation[j] * resultat[i][j]) < (aggregation[j] + resultat[i][j])) {
+				if ((aggregation[j] > 1.0) && (resultat[i][j] > 1.0)) {
 					aggregation[j] = aggregation[j] * resultat[i][j];
 				} else {
 					aggregation[j] = aggregation[j] + resultat[i][j];
@@ -43,7 +45,7 @@ public class Engine {
 		}
 
 		for (int i = 0; i < aggregation.length; i++) {
-			if (aggregation[i] > stats.getPercentile(90)) {
+			if (aggregation[i] > stats.getPercentile(percentile)) {
 				score.put(featuresSpecifications.findBirdId(i), Math.round(aggregation[i]));
 			}
 		}
