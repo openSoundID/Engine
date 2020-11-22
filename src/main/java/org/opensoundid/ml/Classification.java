@@ -2,6 +2,7 @@ package org.opensoundid.ml;
 
 import java.io.File;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -9,6 +10,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -32,16 +34,19 @@ import weka.core.converters.ArffLoader;
 
 import weka.filters.unsupervised.attribute.PrincipalComponents;
 
-
 public class Classification {
 
-	private static final Logger logger = LogManager.getLogger(Features.class);
+	private static final Logger logger = LogManager.getLogger(Classification.class);
 
-	private double principalComponentsVarianceCovered = 1.0;
 	private Classifier classifier;
 	private RotationForest rotationForest = new RotationForest();
 	private String trainingDirectory;
 	private String modelFileName;
+	private int rotationForestNumExecutionSlots;
+	private int rotationForestMaxGroup;
+	private int rotationForestMinGroup;
+	private int rotationForestNumIterations;
+	private double principalComponentsVarianceCovered;
 
 	public Classification(EngineConfiguration engineConfiguration) {
 
@@ -49,9 +54,15 @@ public class Classification {
 
 			trainingDirectory = engineConfiguration.getString("classification.trainingDirectory");
 			modelFileName = engineConfiguration.getString("classification.modelFileName");
+
+			rotationForestNumExecutionSlots = engineConfiguration
+					.getInt("classification.rotationForest.NumExecutionSlots");
+			rotationForestMaxGroup = engineConfiguration.getInt("classification.rotationForest.MaxGroup");
+			rotationForestMinGroup = engineConfiguration.getInt("classification.rotationForest.MinGroup");
+			rotationForestNumIterations = engineConfiguration.getInt("classification.rotationForest.NumIterations");
 			principalComponentsVarianceCovered = engineConfiguration
-					.getDouble("classification.principalComponentsVarianceCovered", principalComponentsVarianceCovered);
-			
+					.getDouble("classification.principalComponents.varianceCovered");
+
 			if (Files.exists(Paths.get(modelFileName))) {
 				classifier = (Classifier) weka.core.SerializationHelper.read(modelFileName);
 			} else {
@@ -62,21 +73,20 @@ public class Classification {
 				Instances trainingDataSet = loader.getDataSet();
 				trainingDataSet.setClassIndex(trainingDataSet.numAttributes() - 1);
 
-				
-				rotationForest.setNumExecutionSlots(16);
-				rotationForest.setMaxGroup(3);
-				rotationForest.setMinGroup(3);
-				rotationForest.setNumIterations(100);
+				rotationForest.setNumExecutionSlots(rotationForestNumExecutionSlots);
+				rotationForest.setMaxGroup(rotationForestMaxGroup);
+				rotationForest.setMinGroup(rotationForestMinGroup);
+				rotationForest.setNumIterations(rotationForestNumIterations);
 				J48 j48 = new J48();
 				rotationForest.setClassifier(j48);
 				PrincipalComponents principalComponents = new PrincipalComponents();
-				principalComponents.setVarianceCovered(1.0);
+				principalComponents.setVarianceCovered(principalComponentsVarianceCovered);
 				principalComponents.setMaximumAttributeNames(-1);
 				rotationForest.setProjectionFilter(principalComponents);
 
 				rotationForest.buildClassifier(trainingDataSet);
-				
-				classifier= rotationForest;
+
+				classifier = rotationForest;
 
 				SerializationHelper.write(modelFileName, classifier);
 			}
@@ -99,7 +109,7 @@ public class Classification {
 			eval.evaluateModel(classifier, testInstances);
 
 			int numTestInstances = testInstances.numInstances();
-			System.out.printf("There are %d test instances\n", numTestInstances);
+			logger.info("There are {} test instances", numTestInstances);
 
 			// Loop over each test instance.
 			for (int i = 0; i < numTestInstances; i++) {
@@ -113,8 +123,6 @@ public class Classification {
 				}
 
 			}
-
-			System.out.printf("\n");
 
 		} catch (Exception ex) {
 
@@ -138,7 +146,7 @@ public class Classification {
 			eval.evaluateModel(classifier, testInstances);
 
 			int numTestInstances = testInstances.numInstances();
-			System.out.printf("There are %d test instances\n", numTestInstances);
+			logger.info("There are {} test instances", numTestInstances);
 
 			// Loop over each test instance.
 			for (int i = 0; i < numTestInstances; i++) {
@@ -160,8 +168,6 @@ public class Classification {
 			}
 			returnScore[0] = score[(int) testInstances.instance(0).classValue()];
 			returnScore[1] = Arrays.stream(score).max().orElse(-1);
-
-			System.out.printf("\n");
 
 		} catch (Exception ex) {
 
@@ -222,20 +228,18 @@ public class Classification {
 			}
 
 		} catch (ParseException exp) {
-			System.out.println("Unexpected exception:" + exp.getMessage());
+			logger.error("Unexpected exception:", exp);
 		}
 
-		try {
+		List<File> arffFiles;
+		try (Stream<Path> walk = Files.walk(Paths.get(arffTestDirectory))) {
+			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
+					.sorted(Comparator.comparing(File::getName)).collect(Collectors.toList());
 
 			EngineConfiguration config = new EngineConfiguration(signaturePropertiesFile);
 			Classification classification = new Classification(config);
-			int correct = 0;
-			int incorrect = 0;
-			Map<String, Evaluation> resultats = new HashMap<>();
 
-			List<File> arffFiles = Files.list(Paths.get(arffTestDirectory))
-					.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(javaPath -> javaPath.toFile())
-					.sorted(Comparator.comparing(File::getName)).collect(Collectors.toList());
+			Map<String, Evaluation> resultats = new HashMap<>();
 
 			for (File arffFile : arffFiles) {
 
@@ -249,33 +253,19 @@ public class Classification {
 					Evaluation resultat = classification.predict(evaluation);
 
 					resultats.put(arffFile.getName(), resultat);
-					System.out.println(arffFile.getName());
-					System.out.println(resultat.toSummaryString("\nResults\n======\n", false));
-					System.out.println(resultat.toClassDetailsString("\n=== Detailed Accuracy By Class ===\n"));
-					System.out.println(resultat.toMatrixString("\nMatrice\n======\n"));
+					logger.info(arffFile.getName());
+					logger.info(resultat.toSummaryString("\nResults\n======\n", false));
+					logger.info(resultat.toClassDetailsString("\n=== Detailed Accuracy By Class ===\n"));
+					logger.info(resultat.toMatrixString("\nMatrice\n======\n"));
 					double[] evaluateScore = classification.evaluateScore(evaluation);
-					System.out.printf("Score: %f,max score %f\n", evaluateScore[0], evaluateScore[1]);
-					if (evaluateScore[0] == evaluateScore[1]) {
-						correct += 1;
-					} else {
-						incorrect += 1;
-					}
+					logger.info("Score: {},max score {}", evaluateScore[0], evaluateScore[1]);
+
 				} else {
-					System.out.print("number of instance ==0");
-					System.out.println(arffFile.getName());
+					logger.info("number of instance ==0: file {}", arffFile.getName());
+
 				}
 
 			}
-
-			resultats.entrySet().stream()
-					.forEach(e -> System.out.printf("%s:%f:%f\n", e.getKey(),
-							100.0 * e.getValue().correct() / (e.getValue().correct() + e.getValue().incorrect()),
-							e.getValue().correct() + e.getValue().incorrect()));
-
-			System.out.printf("Correctly classified:%d\n", correct);
-			System.out.printf("Incorrectly classified:%d\n", incorrect);
-			System.out.printf("total classified:%d\n", correct + incorrect);
-			System.out.printf("Pct Correctly classified:%f\n", (correct * 1.0 / (correct + incorrect)) * 100.0);
 
 		} catch (Exception e) {
 
