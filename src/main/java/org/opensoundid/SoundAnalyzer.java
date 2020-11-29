@@ -2,7 +2,6 @@ package org.opensoundid;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.RandomAccessFile;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -24,16 +23,16 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.opensoundid.configuration.EngineConfiguration;
-import org.opensoundid.dsp.DSP;
 import org.opensoundid.engine.Engine;
 import org.opensoundid.ml.Classification;
+import org.opensoundid.ml.Features;
 import org.opensoundid.model.impl.BirdObservation;
 import org.opensoundid.model.impl.FeaturesSpecifications;
 import org.opensoundid.model.impl.JsonLowLevelFeatures;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instances;
@@ -73,7 +72,7 @@ public class SoundAnalyzer {
 		EngineConfiguration config = new EngineConfiguration(enginePropertiesFile);
 
 		FeaturesSpecifications featureSpec = new FeaturesSpecifications(config);
-
+		Features mlFeatures = new Features(config);
 		Classification classification = new Classification(config);
 
 		String recordDirectory = config.getString("soundAnalyzer.recordDirectory");
@@ -81,9 +80,11 @@ public class SoundAnalyzer {
 		ScoreAnalyzer scoreAnalyzer = new ScoreAnalyzer(config);
 		ScoreFilter scoreFilter = new ScoreFilter(config);
 		ScoreLogger scoreLogger = new ScoreLogger(config);
-		DSP dsp = new DSP(config);
+
 		ResultSender resultSender = new ResultSender(config);
 		SimpleDateFormat simpleDateFormat = new SimpleDateFormat(config.getString("SoundAnalyzer.dateFormat"));
+		SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+		SimpleDateFormat timeFormatter = new SimpleDateFormat("hh:mm");
 		String endFile = config.getString("SoundAnalyzer.endFile");
 
 		while (!Files.exists(Paths.get(endFile))) {
@@ -106,8 +107,16 @@ public class SoundAnalyzer {
 
 						double[][] features = jsonLowLevelFeatures.getLowlevel().getMfcc_bands_log();
 						double[] energy = jsonLowLevelFeatures.getLowlevel().getEnergy();
+						double zeroCrossingRate = jsonLowLevelFeatures.getDescription().getZero_crossing_rate()[0];
+						double[] envelope = jsonLowLevelFeatures.getDescription().getEnvelope()[0];
 
-						List<double[]> normalizedFeatures = dsp.processMelSpectra(features, energy, config.getDouble("SoundAnalyzer.processMelSpectra.percentil"));
+						String date = dateFormatter
+								.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
+						String time = timeFormatter
+								.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
+
+						List<double[]> normalizedFeatures = mlFeatures.computeMLFeatures(zeroCrossingRate, envelope,
+								features, energy, date, time);
 
 						if (!normalizedFeatures.isEmpty()) {
 							Instances dataRaw = new Instances("Sound Analyse",
@@ -117,8 +126,9 @@ public class SoundAnalyzer {
 
 								double[] instanceValue = new double[dataRaw.numAttributes()];
 
-								instanceValue=Arrays.copyOf(normalizedFeatures.get(i), normalizedFeatures.get(i).length);
-								
+								instanceValue = Arrays.copyOf(normalizedFeatures.get(i),
+										normalizedFeatures.get(i).length);
+
 								dataRaw.add(new DenseInstance(1.0, instanceValue));
 
 							}
@@ -132,8 +142,6 @@ public class SoundAnalyzer {
 							analyzedScores.forEach((k, v) -> {
 								try {
 
-									BirdObservation birdObservation = new BirdObservation(simpleDateFormat
-											.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis()), k);
 									Files.write(Paths.get(reportName),
 											String.format("signature %d:%d%n", k, v).getBytes(),
 											StandardOpenOption.CREATE, StandardOpenOption.APPEND);
@@ -144,26 +152,20 @@ public class SoundAnalyzer {
 								}
 							});
 
-							try {
-								Files.write(Paths.get(reportName), String.format("Filtred Score\n").getBytes(),
-										StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-							} catch (IOException ex) {
-
-								logger.error(ex.getMessage(), ex);
-
-							}
+							Files.write(Paths.get(reportName), String.format("Filtred Score%n").getBytes(),
+									StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 
 							Map<Integer, Long> filtredScores = scoreFilter.filtreScore(analyzedScores, config);
 
 							filtredScores.forEach((birdId, score) -> {
 								try {
-									String date = simpleDateFormat
+									String fileDate = simpleDateFormat
 											.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
-									BirdObservation birdObservation = new BirdObservation(date, birdId);
+									BirdObservation birdObservation = new BirdObservation(fileDate, birdId);
 									Files.write(Paths.get(reportName),
-											String.format("signature %d:%d\n", birdId, score).getBytes(),
+											String.format("signature %d:%d%n", birdId, score).getBytes(),
 											StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-									scoreLogger.logScore(date, birdId, featureSpec.findBirdName(birdId), score);
+									scoreLogger.logScore(fileDate, birdId, featureSpec.findBirdName(birdId), score);
 									if (birdObservation.getBirdCallID() != 0)
 										resultSender.sendResult(birdObservation);
 
@@ -174,7 +176,7 @@ public class SoundAnalyzer {
 							});
 						} else {
 							try {
-								Files.write(Paths.get(reportName), String.format("Empty instance\n").getBytes(),
+								Files.write(Paths.get(reportName), "Empty instance\n".getBytes(),
 										StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 							} catch (IOException ex) {
 
@@ -187,8 +189,7 @@ public class SoundAnalyzer {
 						Thread.sleep(10);
 					}
 				}
-			}
-			catch (Exception ex) {
+			} catch (Exception ex) {
 
 				logger.error(ex.getMessage(), ex);
 			}
