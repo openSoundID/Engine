@@ -58,7 +58,7 @@ public class Features {
 	private double trainingSizePct;
 	private double percentileHigh;
 	private double percentileLow;
-	private double zeroCrossingRateFactor;
+	private double envelopeThreshold;
 	private String featuresDirectory;
 	private String arffTrainingFiles;
 	private String arffTestFiles;
@@ -86,7 +86,7 @@ public class Features {
 			trainingSizePct = config.getDouble("features.trainingSizePct");
 			percentileHigh = config.getDouble("features.percentileHigh");
 			percentileLow = config.getDouble("features.percentileLow");
-			zeroCrossingRateFactor = config.getDouble("features.zeroCrossingRateFactor");
+			envelopeThreshold = config.getDouble("features.envelopeThreshold");
 			featuresDirectory = config.getString("features.featuresDirectory");
 			arffTrainingFiles = config.getString("features.arffTrainingFiles");
 			arffTestFiles = config.getString("features.arffTestFiles");
@@ -336,6 +336,31 @@ public class Features {
 		}
 
 	}
+	
+	List<double[]> computeMLFeatures(double zeroCrossingRate,double[] envelope,double[][] features,double[] energy,String date,String time)
+	{
+		double correctedThreshold = zeroCrossingRate * envelopeThreshold;
+		logger.info("zcr:{}", correctedThreshold);
+		int count = 0;
+		for (int i = 0; i < envelope.length; i++) {
+			if (envelope[i] < correctedThreshold)
+				count++;
+
+		}
+
+		double percentile = count * 100.0 / (envelope.length * 1.0);
+
+		percentile = (percentile > percentileHigh) ? percentileHigh : percentile;
+		percentile = (percentile < percentileLow) ? percentileLow : percentile;
+
+		logger.info("Percentile:{}",percentile);
+		List<double[]> normalizedFeatures = dsp.processMelSpectra(features, energy, percentile);
+		addMetaData(normalizedFeatures, date, time);
+		
+		return normalizedFeatures;
+
+		
+	}
 
 	void computeMLNormalizedFeature(String jsonDirectory, String featuresDirectory, String recordId, int birdID,
 			String date, String time) {
@@ -350,24 +375,8 @@ public class Features {
 			double[] energy = jsonLowLevelFeatures.getLowlevel().getEnergy();
 			double zeroCrossingRate = jsonLowLevelFeatures.getDescription().getZero_crossing_rate()[0];
 			double[] envelope = jsonLowLevelFeatures.getDescription().getEnvelope()[0];
-
-			double threshold = zeroCrossingRate * zeroCrossingRateFactor;
-			logger.info("zcr:{}", threshold);
-			int count = 0;
-			for (int i = 0; i < envelope.length; i++) {
-				if (envelope[i] < threshold)
-					count++;
-
-			}
-
-			double percentile = count * 100.0 / (envelope.length * 1.0);
-
-			percentile = (percentile > percentileHigh) ? percentileHigh : percentile;
-			percentile = (percentile < percentileLow) ? percentileLow : percentile;
-
-			logger.info("Percentile:{}",percentile);
-			List<double[]> normalizedFeatures = dsp.processMelSpectra(features, energy, percentile);
-			addMetaData(normalizedFeatures, date, time);
+			
+			List<double[]> normalizedFeatures=computeMLFeatures(zeroCrossingRate,envelope,features,energy,date,time);
 
 			// Directory creation
 			Path path = Paths.get(featuresDirectory);
