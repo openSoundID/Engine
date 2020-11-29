@@ -76,7 +76,7 @@ public class Features {
 	private DSP dsp;
 	private FeaturesSpecifications featureSpec;
 
-	Features(EngineConfiguration config) {
+	public Features(EngineConfiguration config) {
 
 		try {
 			dsp = new DSP(config);
@@ -337,7 +337,7 @@ public class Features {
 
 	}
 	
-	List<double[]> computeMLFeatures(double zeroCrossingRate,double[] envelope,double[][] features,double[] energy,String date,String time)
+	public List<double[]> computeMLFeatures(double zeroCrossingRate,double[] envelope,double[][] features,double[] energy,String date,String time)
 	{
 		double correctedThreshold = zeroCrossingRate * envelopeThreshold;
 		logger.info("zcr:{}", correctedThreshold);
