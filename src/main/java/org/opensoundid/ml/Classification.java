@@ -4,6 +4,8 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -198,6 +200,8 @@ public class Classification {
 
 	public static void main(String[] args) {
 
+		logger.info("start classification");
+		Instant start = Instant.now();
 		CommandLineParser parser = new DefaultParser();
 
 		Options options = new Options();
@@ -269,8 +273,12 @@ public class Classification {
 
 		} catch (Exception e) {
 
-			e.printStackTrace();
+			logger.error("Unexpected exception:", e);
 		}
+		
+		Instant end = Instant.now();
+		logger.info("classification process takes:{}",Duration.between(start, end));
+		logger.info("End classification");
 
 	}
 
