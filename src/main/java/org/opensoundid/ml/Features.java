@@ -7,6 +7,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -205,6 +207,7 @@ public class Features {
 
 			spreadSubsample.setMaxCount(featuresNumber * spreadSubsampleFactor);
 			spreadSubsample.setInputFormat(train);
+			spreadSubsample.setRandomSeed(1);
 			train = Filter.useFilter(train, spreadSubsample);
 
 			RotationForest rotationForest = new RotationForest();
@@ -231,6 +234,7 @@ public class Features {
 
 			spreadSubsample.setMaxCount(featuresNumber);
 			spreadSubsample.setInputFormat(train);
+			spreadSubsample.setRandomSeed(1);
 			train = Filter.useFilter(train, spreadSubsample);
 
 			saver.setInstances(train);
@@ -243,6 +247,7 @@ public class Features {
 
 			spreadSubsample.setMaxCount(200);
 			spreadSubsample.setInputFormat(test);
+			spreadSubsample.setRandomSeed(1);
 			test = Filter.useFilter(test, spreadSubsample);
 
 			saver.setInstances(test);
@@ -290,6 +295,7 @@ public class Features {
 
 			spreadSubsample.setMaxCount(500);
 			spreadSubsample.setInputFormat(dataRaw);
+			spreadSubsample.setRandomSeed(1);
 			dataRaw = Filter.useFilter(dataRaw, spreadSubsample);
 
 			saver.setInstances(dataRaw);
@@ -397,6 +403,9 @@ public class Features {
 
 	public static void main(String[] args) {
 
+		logger.info("start Features Extraction");
+		Instant start = Instant.now();
+		
 		CommandLineParser parser = new DefaultParser();
 
 		Options options = new Options();
@@ -441,6 +450,10 @@ public class Features {
 
 			e.printStackTrace();
 		}
+		
+		Instant end = Instant.now();
+		logger.info("Features extraction process takes:{}",Duration.between(start, end));
+		logger.info("End Features extraction");
 
 	}
 
