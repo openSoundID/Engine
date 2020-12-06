@@ -4,6 +4,8 @@ import java.io.File;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -122,6 +124,9 @@ public class JsonToDB {
 	}
 
 	public static void main(String[] args) {
+		
+		logger.info("start Xeno-Canto Json Metadata to Database");
+		Instant start = Instant.now();
 
 		CommandLineParser parser = new DefaultParser();
 		
@@ -160,6 +165,10 @@ public class JsonToDB {
 
 			logger.error(ex.getMessage(), ex);
 		}
+		
+		Instant end = Instant.now();
+		logger.info("Xeno-Canto Json Metadata to Database process takes:{}",Duration.between(start, end));
+		logger.info("End Xeno-Canto Json Metadata to Database");
 
 	}
 
