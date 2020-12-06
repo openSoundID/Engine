@@ -79,7 +79,9 @@ public class Classification {
 				rotationForest.setMaxGroup(rotationForestMaxGroup);
 				rotationForest.setMinGroup(rotationForestMinGroup);
 				rotationForest.setNumIterations(rotationForestNumIterations);
+				rotationForest.setSeed(1);
 				J48 j48 = new J48();
+				j48.setSeed(1);
 				rotationForest.setClassifier(j48);
 				PrincipalComponents principalComponents = new PrincipalComponents();
 				principalComponents.setVarianceCovered(principalComponentsVarianceCovered);
