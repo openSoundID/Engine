@@ -413,7 +413,7 @@ public class Features {
 		options.addOption(Option.builder("featuresPropertiesFile").longOpt("featuresPropertiesFile")
 				.desc("Signature properties file").required().hasArg().argName("File Name").build());
 
-		String signaturePropertiesFile = "";
+		String featuresPropertiesFile = "";
 
 		try {
 			// parse the command line arguments
@@ -422,7 +422,7 @@ public class Features {
 			// validate that arguments has been set
 			if (line.hasOption("featuresPropertiesFile")) {
 
-				signaturePropertiesFile = line.getOptionValue("featuresPropertiesFile");
+				featuresPropertiesFile = line.getOptionValue("featuresPropertiesFile");
 			} else {
 				HelpFormatter formatter = new HelpFormatter();
 				formatter.printHelp("Features", options);
@@ -436,7 +436,7 @@ public class Features {
 
 		try {
 
-			EngineConfiguration engineConfiguration = new EngineConfiguration(signaturePropertiesFile);
+			EngineConfiguration engineConfiguration = new EngineConfiguration(featuresPropertiesFile);
 			Features features = new Features(engineConfiguration);
 
 			features.computeAllFeatures(engineConfiguration.getString("features.alsoJsonDirectory"),
