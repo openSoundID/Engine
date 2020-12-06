@@ -5,13 +5,6 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.hibernate.Session;
@@ -117,37 +110,10 @@ public class Inventory {
 
 	public static void main(String[] args) {
 
-		CommandLineParser parser = new DefaultParser();
-		
-		Options options = new Options();
-
-		options.addOption(Option.builder("enginePropertiesFile").longOpt("enginePropertiesFile")
-				.desc("Engine properties file").required().hasArg().argName("File Name").build());
-
-		String enginePropertiesFile = "";
-
-		try {
-			// parse the command line arguments
-			CommandLine line = parser.parse(options, args);
-
-			// validate that arguments has been set
-			if (line.hasOption("enginePropertiesFile")) {
-
-				enginePropertiesFile = line.getOptionValue("enginePropertiesFile");
-			} else {
-				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp("Inventory", options);
-				System.exit(-1);
-
-			}
-
-		} catch (ParseException exp) {
-			logger.error(exp.getMessage(), exp);
-		}
 
 		try {
 
-			EngineConfiguration engineConfiguration = new EngineConfiguration(enginePropertiesFile);
+			EngineConfiguration engineConfiguration = new EngineConfiguration();
 			Inventory inventory = new Inventory(engineConfiguration);
 			inventory.makeInventoryFile();
 

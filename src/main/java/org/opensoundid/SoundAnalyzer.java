@@ -43,45 +43,19 @@ public class SoundAnalyzer {
 
 	public static void main(String[] args) {
 
-		CommandLineParser parser = new DefaultParser();
-
-		Options options = new Options();
-		options.addOption(Option.builder("enginePropertiesFile").longOpt("enginePropertiesFile")
-				.desc("Engine Properties File").required().hasArg().argName("File Name").build());
-
-		String enginePropertiesFile = "";
-
-		try {
-			// parse the command line arguments
-			CommandLine line = parser.parse(options, args);
-
-			// validate that arguments has been set
-			if (line.hasOption("enginePropertiesFile")) {
-				enginePropertiesFile = line.getOptionValue("enginePropertiesFile");
-
-			} else {
-				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp("Signature", options);
-				System.exit(-1);
-
-			}
-		} catch (ParseException ex) {
-			logger.error(ex.getMessage(), ex);
-		}
-
-		EngineConfiguration config = new EngineConfiguration(enginePropertiesFile);
+		EngineConfiguration config = new EngineConfiguration();
 
 		FeaturesSpecifications featureSpec = new FeaturesSpecifications(config);
 		Features mlFeatures = new Features(config);
-		Classification classification = new Classification(config);
+		Classification classification = new Classification();
 
 		String recordDirectory = config.getString("soundAnalyzer.recordDirectory");
 		Engine engine = new Engine(config);
-		ScoreAnalyzer scoreAnalyzer = new ScoreAnalyzer(config);
-		ScoreFilter scoreFilter = new ScoreFilter(config);
-		ScoreLogger scoreLogger = new ScoreLogger(config);
+		ScoreAnalyzer scoreAnalyzer = new ScoreAnalyzer();
+		ScoreFilter scoreFilter = new ScoreFilter();
+		ScoreLogger scoreLogger = new ScoreLogger();
 
-		ResultSender resultSender = new ResultSender(config);
+		ResultSender resultSender = new ResultSender();
 		SimpleDateFormat simpleDateFormat = new SimpleDateFormat(config.getString("SoundAnalyzer.dateFormat"));
 		SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
 		SimpleDateFormat timeFormatter = new SimpleDateFormat("hh:mm");

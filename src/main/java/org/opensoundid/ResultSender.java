@@ -15,15 +15,14 @@ import org.opensoundid.model.impl.BirdObservation;
 public class ResultSender {
 
 	private Client client;
-	private EngineConfiguration config;
+	private EngineConfiguration engineConfiguration = new EngineConfiguration();
 
 	private static final Logger logger = LogManager.getLogger(ResultSender.class);
 
-	ResultSender(EngineConfiguration config) {
+	ResultSender() {
 
 		try {
 
-			this.config = config;
 			client = ClientBuilder.newBuilder().register(JacksonFeature.class).build();
 		} catch (Exception ex) {
 			logger.error(ex.getMessage(), ex);
@@ -35,7 +34,8 @@ public class ResultSender {
 
 		try {
 
-			client.target(config.getString("engine.ResultSender.RestUrl")).request(MediaType.APPLICATION_JSON)
+			client.target(engineConfiguration.getString("engine.ResultSender.RestUrl"))
+					.request(MediaType.APPLICATION_JSON)
 					.post(Entity.entity(birdObservation, MediaType.APPLICATION_JSON));
 		} catch (Exception ex) {
 			logger.error(ex.getMessage(), ex);

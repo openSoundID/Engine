@@ -14,8 +14,9 @@ public class EngineConfiguration {
 	private Configuration config;
 	private static final Logger logger = LogManager.getLogger(EngineConfiguration.class);
 
-	public EngineConfiguration(String propertiesFileName) {
+	public EngineConfiguration() {
 
+		String propertiesFileName="engine.properties";
 		Parameters params = new Parameters();
 		FileBasedConfigurationBuilder<FileBasedConfiguration> builder = new FileBasedConfigurationBuilder<FileBasedConfiguration>(
 				PropertiesConfiguration.class).configure(params.properties().setFileName(propertiesFileName));

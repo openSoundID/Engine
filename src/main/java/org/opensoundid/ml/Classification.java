@@ -50,10 +50,11 @@ public class Classification {
 	private int rotationForestNumIterations;
 	private double principalComponentsVarianceCovered;
 
-	public Classification(EngineConfiguration engineConfiguration) {
+	public Classification() {
 
 		try {
 
+			EngineConfiguration engineConfiguration = new EngineConfiguration();
 			trainingDirectory = engineConfiguration.getString("classification.trainingDirectory");
 			modelFileName = engineConfiguration.getString("classification.modelFileName");
 
@@ -207,23 +208,20 @@ public class Classification {
 		CommandLineParser parser = new DefaultParser();
 
 		Options options = new Options();
-		options.addOption(Option.builder("featuresPropertiesFile").longOpt("featuresPropertiesFile")
-				.desc("Signature properties file").required().hasArg().argName("File Name").build());
 		options.addOption(Option.builder("arffTestDirectory").longOpt("arffTestDirectory").desc("Arff Test Directory")
 				.required().hasArg().argName("File Name").build());
 
 		String arffTestDirectory = "arffTestDirectory";
 
-		String signaturePropertiesFile = "";
 
 		try {
 			// parse the command line arguments
 			CommandLine line = parser.parse(options, args);
 
 			// validate that arguments has been set
-			if (line.hasOption("featuresPropertiesFile") && line.hasOption("arffTestDirectory")) {
+			if (line.hasOption("arffTestDirectory")) {
 
-				signaturePropertiesFile = line.getOptionValue("featuresPropertiesFile");
+
 				arffTestDirectory = line.getOptionValue("arffTestDirectory");
 
 			} else {
@@ -241,9 +239,8 @@ public class Classification {
 		try (Stream<Path> walk = Files.walk(Paths.get(arffTestDirectory))) {
 			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
 					.sorted(Comparator.comparing(File::getName)).collect(Collectors.toList());
-
-			EngineConfiguration config = new EngineConfiguration(signaturePropertiesFile);
-			Classification classification = new Classification(config);
+			
+			Classification classification = new Classification();
 
 			Map<String, Evaluation> resultats = new HashMap<>();
 

@@ -14,12 +14,11 @@ public class ScoreAnalyzer {
 	private static final Logger logger = LogManager.getLogger(ScoreAnalyzer.class);
 	private int defaultScoreThreshold;
 
-	private EngineConfiguration config;
+	private EngineConfiguration engineConfiguration = new EngineConfiguration();
 
-	ScoreAnalyzer(EngineConfiguration config) {
+	ScoreAnalyzer() {
 
-		this.config = config;
-		defaultScoreThreshold = config.getInt("engine.ScoreAnalyzer.defaultScoreThreshold");
+		defaultScoreThreshold = engineConfiguration.getInt("engine.ScoreAnalyzer.defaultScoreThreshold");
 
 	}
 
@@ -33,7 +32,7 @@ public class ScoreAnalyzer {
 				Integer birdID = entry.getKey();
 				Long score = entry.getValue();
 
-				int numSignatureThreshold = config.getInt(
+				int numSignatureThreshold = engineConfiguration.getInt(
 						"engine.ScoreAnalyzer.specificScoreThreshold." + Integer.toString(birdID),
 						defaultScoreThreshold);
 

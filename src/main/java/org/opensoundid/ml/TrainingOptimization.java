@@ -37,7 +37,7 @@ public class TrainingOptimization {
 	
 	public void optimizeDataSet(String enginePropertiesFile)
 	{
-		EngineConfiguration config = new EngineConfiguration(enginePropertiesFile);
+		EngineConfiguration config = new EngineConfiguration();
 		FeaturesSpecifications featureSpec = new FeaturesSpecifications(config);
 		
 		//DATASET TRAINING

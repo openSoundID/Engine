@@ -16,13 +16,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -405,38 +398,10 @@ public class Features {
 
 		logger.info("start Features Extraction");
 		Instant start = Instant.now();
-		
-		CommandLineParser parser = new DefaultParser();
-
-		Options options = new Options();
-
-		options.addOption(Option.builder("featuresPropertiesFile").longOpt("featuresPropertiesFile")
-				.desc("Signature properties file").required().hasArg().argName("File Name").build());
-
-		String featuresPropertiesFile = "";
-
-		try {
-			// parse the command line arguments
-			CommandLine line = parser.parse(options, args);
-
-			// validate that arguments has been set
-			if (line.hasOption("featuresPropertiesFile")) {
-
-				featuresPropertiesFile = line.getOptionValue("featuresPropertiesFile");
-			} else {
-				HelpFormatter formatter = new HelpFormatter();
-				formatter.printHelp("Features", options);
-				System.exit(-1);
-
-			}
-
-		} catch (ParseException exp) {
-			logger.error("Unexpected exception:",exp);
-		}
 
 		try {
 
-			EngineConfiguration engineConfiguration = new EngineConfiguration(featuresPropertiesFile);
+			EngineConfiguration engineConfiguration = new EngineConfiguration();
 			Features features = new Features(engineConfiguration);
 
 			features.computeAllFeatures(engineConfiguration.getString("features.alsoJsonDirectory"),
