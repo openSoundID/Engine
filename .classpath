@@ -13,9 +13,9 @@
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
-	<classpathentry combineaccessrules="false" exported="true" kind="src" path="/dsp"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-11">
 		<attributes>
+			<attribute name="module" value="true"/>
 			<attribute name="maven.pomderived" value="true"/>
 		</attributes>
 	</classpathentry>
@@ -25,7 +25,5 @@
 		</attributes>
 	</classpathentry>
 	<classpathentry exported="true" kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/3"/>
-	<classpathentry exported="true" kind="lib" path="/home/jerome/wekafiles/packages/wekaDeeplearning4j/wekaDeeplearning4j-1.6.0.jar"/>
-	<classpathentry exported="true" kind="lib" path="/home/jerome/wekafiles/packages/wekaDeeplearning4j/lib"/>
 	<classpathentry kind="output" path="target/classes"/>
 </classpath>
