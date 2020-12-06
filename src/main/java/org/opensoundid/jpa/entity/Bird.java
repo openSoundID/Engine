@@ -8,6 +8,7 @@ import javax.persistence.Table;
 
 @Entity
 @NamedQuery(name ="Bird.findBySpeciesAndGenre",query="select b from Bird b where b.species = :species and b.genre = :genre")
+@NamedQuery(name ="Bird.findById",query="select b from Bird b where b.id = :id")
 @NamedQuery(name ="Bird.SelectAllBird",query="from Bird")
 @Table(name = "Bird")
 public class Bird {
