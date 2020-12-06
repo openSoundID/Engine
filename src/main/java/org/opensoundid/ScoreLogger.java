@@ -14,10 +14,11 @@ public class ScoreLogger {
 	private String savePath;
 	private CSVFormat csvFileFormat = CSVFormat.DEFAULT.withHeader("timestamp", "BirdId", "BirdName", "Score")
 			.withFirstRecordAsHeader();
+	private EngineConfiguration engineConfiguration = new EngineConfiguration();
 
-	ScoreLogger(EngineConfiguration config) {
+	ScoreLogger() {
 
-		savePath = config.getString("scoreLogger.savePath");
+		savePath = engineConfiguration.getString("scoreLogger.savePath");
 
 	}
 
