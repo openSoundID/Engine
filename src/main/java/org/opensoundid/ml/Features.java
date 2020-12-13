@@ -58,8 +58,10 @@ public class Features {
 	private String arffTrainingFiles;
 	private String arffTestFiles;
 	private String subSampleArffTestFiles;
+	private int subSampleArffTestMaxCount;
 	private String arffTestAlsoFiles;
 	private String subSampleArffTestAlsoFiles;
+	private int subSampleArffTestAlsoMaxCount;
 	private SpreadSubsample spreadSubsample;
 	private double spreadSubsampleFactor;
 	private int rotationForestNumExecutionSlots;
@@ -86,8 +88,10 @@ public class Features {
 			arffTrainingFiles = config.getString("features.arffTrainingFiles");
 			arffTestFiles = config.getString("features.arffTestFiles");
 			subSampleArffTestFiles = config.getString("features.subSampleArffTestFiles");
+			subSampleArffTestMaxCount= config.getInt("features.subSampleArffTestMaxCount");
 			arffTestAlsoFiles = config.getString("features.arffTestAlsoFiles");
 			subSampleArffTestAlsoFiles = config.getString("features.subSampleArffTestAlsoFiles");
+			subSampleArffTestAlsoMaxCount = config.getInt("features.subSampleArffTestAlsoMaxCount");
 			spreadSubsampleFactor = config.getDouble("features.spreadSubsampleFactor");
 			rotationForestNumExecutionSlots = config.getInt("features.removeMisclassified.rotationForest.NumExecutionSlots");
 			rotationForestMaxGroup = config.getInt("features.removeMisclassified.rotationForest.MaxGroup");
@@ -238,7 +242,7 @@ public class Features {
 			saver.setFile(new File(arffTestFiles));
 			saver.writeBatch();
 
-			spreadSubsample.setMaxCount(200);
+			spreadSubsample.setMaxCount(subSampleArffTestMaxCount);
 			spreadSubsample.setInputFormat(test);
 			spreadSubsample.setRandomSeed(1);
 			test = Filter.useFilter(test, spreadSubsample);
@@ -286,7 +290,7 @@ public class Features {
 			saver.setFile(new File(arffTestAlsoFiles));
 			saver.writeBatch();
 
-			spreadSubsample.setMaxCount(500);
+			spreadSubsample.setMaxCount(subSampleArffTestAlsoMaxCount);
 			spreadSubsample.setInputFormat(dataRaw);
 			spreadSubsample.setRandomSeed(1);
 			dataRaw = Filter.useFilter(dataRaw, spreadSubsample);
