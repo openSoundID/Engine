@@ -53,7 +53,7 @@ public class NoiseRecords {
 				String recordId = FilenameUtils.getBaseName(noiseRecord.getPath());
 				String classId = FilenameUtils
 						.getBaseName(FilenameUtils.getFullPathNoEndSeparator(noiseRecord.getPath()));
-				insertNoiseRecordInDB(recordId, classId);
+				insertNoiseRecordInDB(recordId, Integer.parseInt(classId));
 
 			}
 
@@ -64,7 +64,7 @@ public class NoiseRecords {
 
 	}
 
-	void insertNoiseRecordInDB(String recordID, String classId) {
+	void insertNoiseRecordInDB(String recordID, int classId) {
 
 		try (Session session = JpaUtil.getSessionFactory().openSession();) {
 
