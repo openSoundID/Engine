@@ -37,7 +37,7 @@ public class XenoCantoRecord {
 		try {
 
 			EngineConfiguration engineConfiguration = new EngineConfiguration();
-			this.jsonDirectory = engineConfiguration.getString("XenoCantoRecords.jsonDirectory");
+			jsonDirectory = engineConfiguration.getString("XenoCantoRecords.jsonDirectory");
 		}
 
 		catch (Exception ex) {
@@ -99,7 +99,7 @@ public class XenoCantoRecord {
 						Bird birdAlso = queryBird.uniqueResult();
 
 						int birdID = birdAlso != null ? birdAlso.getId() : Bird.UNKNOW_BIRD_ID;
-						session.merge(new Also(XCRecording.getId(), birdID));
+						session.merge(new Also("XC-" + XCRecording.getId(), birdID));
 
 					}
 				}
