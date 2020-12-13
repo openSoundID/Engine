@@ -63,6 +63,7 @@ public class Classification {
 			rotationForestMaxGroup = engineConfiguration.getInt("classification.rotationForest.MaxGroup");
 			rotationForestMinGroup = engineConfiguration.getInt("classification.rotationForest.MinGroup");
 			rotationForestNumIterations = engineConfiguration.getInt("classification.rotationForest.NumIterations");
+			rotationForest.setSeed(1);
 			principalComponentsVarianceCovered = engineConfiguration
 					.getDouble("classification.principalComponents.varianceCovered");
 
@@ -75,12 +76,11 @@ public class Classification {
 
 				Instances trainingDataSet = loader.getDataSet();
 				trainingDataSet.setClassIndex(trainingDataSet.numAttributes() - 1);
-
+				
 				rotationForest.setNumExecutionSlots(rotationForestNumExecutionSlots);
 				rotationForest.setMaxGroup(rotationForestMaxGroup);
 				rotationForest.setMinGroup(rotationForestMinGroup);
 				rotationForest.setNumIterations(rotationForestNumIterations);
-				rotationForest.setSeed(1);
 				J48 j48 = new J48();
 				j48.setSeed(1);
 				rotationForest.setClassifier(j48);
@@ -88,7 +88,6 @@ public class Classification {
 				principalComponents.setVarianceCovered(principalComponentsVarianceCovered);
 				principalComponents.setMaximumAttributeNames(-1);
 				rotationForest.setProjectionFilter(principalComponents);
-
 				rotationForest.buildClassifier(trainingDataSet);
 
 				classifier = rotationForest;
