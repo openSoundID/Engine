@@ -69,7 +69,7 @@ public class Features {
 	private int rotationForestMinGroup;
 	private int rotationForestNumIterations;
 	private double principalComponentsVarianceCovered;
-	
+
 	private DSP dsp;
 	private FeaturesSpecifications featureSpec;
 
@@ -88,16 +88,18 @@ public class Features {
 			arffTrainingFiles = config.getString("features.arffTrainingFiles");
 			arffTestFiles = config.getString("features.arffTestFiles");
 			subSampleArffTestFiles = config.getString("features.subSampleArffTestFiles");
-			subSampleArffTestMaxCount= config.getInt("features.subSampleArffTestMaxCount");
+			subSampleArffTestMaxCount = config.getInt("features.subSampleArffTestMaxCount");
 			arffTestAlsoFiles = config.getString("features.arffTestAlsoFiles");
 			subSampleArffTestAlsoFiles = config.getString("features.subSampleArffTestAlsoFiles");
 			subSampleArffTestAlsoMaxCount = config.getInt("features.subSampleArffTestAlsoMaxCount");
 			spreadSubsampleFactor = config.getDouble("features.spreadSubsampleFactor");
-			rotationForestNumExecutionSlots = config.getInt("features.removeMisclassified.rotationForest.NumExecutionSlots");
+			rotationForestNumExecutionSlots = config
+					.getInt("features.removeMisclassified.rotationForest.NumExecutionSlots");
 			rotationForestMaxGroup = config.getInt("features.removeMisclassified.rotationForest.MaxGroup");
 			rotationForestMinGroup = config.getInt("features.removeMisclassified.rotationForest.MinGroup");
 			rotationForestNumIterations = config.getInt("features.removeMisclassified.rotationForest.NumIterations");
-			principalComponentsVarianceCovered = config.getDouble("features.removeMisclassified.principalComponents.varianceCovered");
+			principalComponentsVarianceCovered = config
+					.getDouble("features.removeMisclassified.principalComponents.varianceCovered");
 
 		} catch (Exception ex) {
 			logger.error(ex.getMessage(), ex);
@@ -145,9 +147,9 @@ public class Features {
 					.collect(Collectors.toList());
 
 			for (File jsonFile : jsonFiles) {
-				String recordId = jsonFile.getName().split("-")[1].split("\\.json")[0];
+				String recordId = jsonFile.getName().split("\\.json")[0];
 				logger.info("Record id {}", recordId);
-				File featuresFile = new File(featuresDirectory + "/XC-" + recordId + ".arff");
+				File featuresFile = new File(featuresDirectory + "/" + recordId + ".arff");
 				if (!featuresFile.exists() && (jsonFile.length() != 0)) {
 					Query<Record> queryRecord = session.createNamedQuery("Record.findByRecordId", Record.class)
 							.setParameter("recordId", recordId);
@@ -307,7 +309,11 @@ public class Features {
 	}
 
 	void addMetaData(List<double[]> normalizedFeatures, String date, String time) {
+
 		DateFormat format;
+		Calendar calendar = new GregorianCalendar();
+		boolean parseError = false;
+
 		if (time.length() == 5)
 			format = new SimpleDateFormat("yyyy-MM-dd hh:mm");
 		else
@@ -316,32 +322,33 @@ public class Features {
 		Date parseDate;
 
 		try {
+
 			time = time.replace(".", ":");
 			if (time.length() == 5)
 				parseDate = format.parse(date + " " + time);
 			else
 				parseDate = format.parse(date);
 
-			Calendar calendar = new GregorianCalendar();
 			calendar.setTime(parseDate);
-
-			for (double[] normalizedFeature : normalizedFeatures) {
-				normalizedFeature[normalizedFeature.length - 1] = calendar.get(Calendar.DAY_OF_YEAR);
-				normalizedFeature[normalizedFeature.length - 2] = time.length() == 5
-						? calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
-						: Double.NaN;
-
-			}
-
 		} catch (java.text.ParseException e) {
 
 			logger.error(e.getMessage(), e);
+			parseError = true;
+		}
+
+		for (double[] normalizedFeature : normalizedFeatures) {
+			normalizedFeature[normalizedFeature.length - 1] = !parseError ? calendar.get(Calendar.DAY_OF_YEAR)
+					: Double.NaN;
+			normalizedFeature[normalizedFeature.length - 2] = !parseError && time.length() == 5
+					? calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+					: Double.NaN;
+
 		}
 
 	}
-	
-	public List<double[]> computeMLFeatures(double zeroCrossingRate,double[] envelope,double[][] features,double[] energy,String date,String time)
-	{
+
+	public List<double[]> computeMLFeatures(double zeroCrossingRate, double[] envelope, double[][] features,
+			double[] energy, String date, String time) {
 		double correctedThreshold = zeroCrossingRate * envelopeThreshold;
 		logger.info("zcr:{}", correctedThreshold);
 		int count = 0;
@@ -356,13 +363,12 @@ public class Features {
 		percentile = (percentile > percentileHigh) ? percentileHigh : percentile;
 		percentile = (percentile < percentileLow) ? percentileLow : percentile;
 
-		logger.info("Percentile:{}",percentile);
+		logger.info("Percentile:{}", percentile);
 		List<double[]> normalizedFeatures = dsp.processMelSpectra(features, energy, percentile);
 		addMetaData(normalizedFeatures, date, time);
-		
+
 		return normalizedFeatures;
 
-		
 	}
 
 	void computeMLNormalizedFeature(String jsonDirectory, String featuresDirectory, String recordId, int birdID,
@@ -371,15 +377,16 @@ public class Features {
 		try {
 
 			ObjectMapper objectMapper = new ObjectMapper();
-			File jsonFile = new File(jsonDirectory + "/XC-" + recordId + ".json");
+			File jsonFile = new File(jsonDirectory + "/" + recordId + ".json");
 			JsonLowLevelFeatures jsonLowLevelFeatures = objectMapper.readValue(jsonFile, JsonLowLevelFeatures.class);
 
 			double[][] features = jsonLowLevelFeatures.getLowlevel().getMfcc_bands_log();
 			double[] energy = jsonLowLevelFeatures.getLowlevel().getEnergy();
 			double zeroCrossingRate = jsonLowLevelFeatures.getDescription().getZero_crossing_rate()[0];
 			double[] envelope = jsonLowLevelFeatures.getDescription().getEnvelope()[0];
-			
-			List<double[]> normalizedFeatures=computeMLFeatures(zeroCrossingRate,envelope,features,energy,date,time);
+
+			List<double[]> normalizedFeatures = computeMLFeatures(zeroCrossingRate, envelope, features, energy, date,
+					time);
 
 			// Directory creation
 			Path path = Paths.get(featuresDirectory);
@@ -389,7 +396,7 @@ public class Features {
 
 			}
 
-			saveMLStandardizedFeature(path + "/XC-" + recordId + ".arff", normalizedFeatures, birdID);
+			saveMLStandardizedFeature(path + "/" + recordId + ".arff", normalizedFeatures, birdID);
 
 		} catch (Exception ex) {
 
@@ -419,9 +426,9 @@ public class Features {
 
 			e.printStackTrace();
 		}
-		
+
 		Instant end = Instant.now();
-		logger.info("Features extraction process takes:{}",Duration.between(start, end));
+		logger.info("Features extraction process takes:{}", Duration.between(start, end));
 		logger.info("End Features extraction");
 
 	}
