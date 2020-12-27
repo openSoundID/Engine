@@ -13,9 +13,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -324,6 +326,7 @@ public class Features {
 		try {
 
 			time = time.replace(".", ":");
+			time = time.replace("~", " ");
 			if (time.length() == 5)
 				parseDate = format.parse(date + " " + time);
 			else
@@ -337,34 +340,34 @@ public class Features {
 		}
 
 		for (double[] normalizedFeature : normalizedFeatures) {
-			normalizedFeature[normalizedFeature.length - 1] = !parseError ? calendar.get(Calendar.DAY_OF_YEAR)
+			int randday = 0;
+			int randminute = 0;
+
+			randday = ThreadLocalRandom.current().nextInt(-10, 10);
+			randminute = ThreadLocalRandom.current().nextInt(-30, 30);
+
+			normalizedFeature[normalizedFeature.length - 1] = !parseError ? randday + calendar.get(Calendar.DAY_OF_YEAR)
 					: Double.NaN;
 			normalizedFeature[normalizedFeature.length - 2] = !parseError && time.length() == 5
-					? calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+					? calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE) + randminute
 					: Double.NaN;
+			if ((normalizedFeature[normalizedFeature.length - 1] != Double.NaN)
+					&& (normalizedFeature[normalizedFeature.length - 1] < 1))
+				normalizedFeature[normalizedFeature.length - 1] = 1;
+
+			if ((normalizedFeature[normalizedFeature.length - 2] != Double.NaN)
+					&& (normalizedFeature[normalizedFeature.length - 2] < 1))
+				normalizedFeature[normalizedFeature.length - 2] = 1;
 
 		}
 
 	}
 
-	public List<double[]> computeMLFeatures(double zeroCrossingRate, double[] envelope, double[][] features,
+	public List<double[]> computeMLFeatures(double[] peakdetectPositions, double[] peakdetectAmplitudes, double[][] features,
 			double[] energy, String date, String time) {
-		double correctedThreshold = zeroCrossingRate * envelopeThreshold;
-		logger.info("zcr:{}", correctedThreshold);
-		int count = 0;
-		for (int i = 0; i < envelope.length; i++) {
-			if (envelope[i] < correctedThreshold)
-				count++;
 
-		}
 
-		double percentile = count * 100.0 / (envelope.length * 1.0);
-
-		percentile = (percentile > percentileHigh) ? percentileHigh : percentile;
-		percentile = (percentile < percentileLow) ? percentileLow : percentile;
-
-		logger.info("Percentile:{}", percentile);
-		List<double[]> normalizedFeatures = dsp.processMelSpectra(features, energy, percentile);
+		List<double[]> normalizedFeatures = dsp.processMelSpectra(features, energy, peakdetectPositions, peakdetectAmplitudes );
 		addMetaData(normalizedFeatures, date, time);
 
 		return normalizedFeatures;
@@ -382,10 +385,10 @@ public class Features {
 
 			double[][] features = jsonLowLevelFeatures.getLowlevel().getMfcc_bands_log();
 			double[] energy = jsonLowLevelFeatures.getLowlevel().getEnergy();
-			double zeroCrossingRate = jsonLowLevelFeatures.getDescription().getZero_crossing_rate()[0];
-			double[] envelope = jsonLowLevelFeatures.getDescription().getEnvelope()[0];
-
-			List<double[]> normalizedFeatures = computeMLFeatures(zeroCrossingRate, envelope, features, energy, date,
+			double[] peakdetectPositions = jsonLowLevelFeatures.getDescription().getPeakdetect_positions()[0];
+			double[] peakdetectAmplitudes = jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0];
+			
+			List<double[]> normalizedFeatures = computeMLFeatures(peakdetectPositions,peakdetectAmplitudes, features, energy, date,
 					time);
 
 			// Directory creation
