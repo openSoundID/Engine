@@ -3,31 +3,42 @@ package org.opensoundid.dsp;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
+import java.util.OptionalDouble;
 
 import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.opensoundid.SoundAnalyzer;
 import org.opensoundid.configuration.EngineConfiguration;
 
 public class DSP {
 
 	private int filterBankNumFilters;
-	private int blankSize;
 	private int maxAggSize;
-	private int deltaAggSize;
-	private int aggSize;
 	/* calculate delta features based on preceding and following N frames */
 	private int deltaN;
+	private int deltaOptimizePeakIndice;
+	private double peakAmplitudePercentile;
+	private int peakMinArrayLength;
+	private int hopSize;
+	private double percentileHigh;
+	private double percentileLow;
+	private static final Logger logger = LogManager.getLogger(DSP.class);
 
 	public DSP(EngineConfiguration config) {
-		
+
 		filterBankNumFilters = config.getInt("dsp.filterBankNumFilters");
-		blankSize = config.getInt("dsp.blankSize");
 		maxAggSize = config.getInt("dsp.maxAggSize");
-		deltaAggSize = config.getInt("dsp.deltaAggSize");
-		aggSize = config.getInt("dsp.aggSize");
 		deltaN = config.getInt("dsp.deltaN");
+		percentileHigh = config.getDouble("dsp.percentileHigh");
+		percentileLow = config.getDouble("dsp.percentileLow");
+		hopSize = config.getInt("dsp.hopsize");
+		deltaOptimizePeakIndice = config.getInt("dsp.deltaOptimizePeakIndice");
+		peakAmplitudePercentile = config.getDouble("dsp.peakAmplitudePercentile");
+		peakMinArrayLength = config.getInt("dsp.peakMinArrayLength");
+
 	}
-
-
 
 	/**
 	 * Compute dynamic pooling from a feature vector sequence.
@@ -39,101 +50,59 @@ public class DSP {
 	 *         features. Each row holds 1 delta feature vector.
 	 */
 
-	public List<double[]> pooling(double[][] features) {
+	public List<double[]> pooling(double[][] features, double[] peakdetectPositions, double[] peakdetectAmplitudes) {
 
 		DescriptiveStatistics[] stats = new DescriptiveStatistics[filterBankNumFilters + 1];
 		for (int k = 0; k < stats.length; k++)
 			stats[k] = new DescriptiveStatistics();
 		List<double[]> pooledFeatures = new ArrayList<>();
 		int currentAggSize = 0;
-		List<int[]> featureStructure = new ArrayList<>();
 
-		int j = 0;
-		int i = 0;
-		// remove blank
-		while (i < features.length) {
-			if (features[i][0] != 0) {
-				j = 0;
+		DescriptiveStatistics stat = new DescriptiveStatistics();
+		for (double peakdetectAmplitude : peakdetectAmplitudes)
+			stat.addValue(peakdetectAmplitude);
 
-				while (((i + j) < features.length) && (features[i + j][0] != 0) && (j < aggSize)) {
-					j++;
+		double percentile = stat.getPercentile(peakAmplitudePercentile);
 
-				}
+		for (int i = 0; i < peakdetectPositions.length; i++) {
 
-				int[] interval = new int[3];
-				interval[0] = 1;
-				interval[1] = i;
-				interval[2] = j;
-				featureStructure.add(interval);
+			if ((peakdetectAmplitudes[i] >= percentile) || (peakdetectAmplitudes.length<peakMinArrayLength)) {
 
-			} else {
+				int indice = optimizeIndice(peakdetectPositions[i], features, deltaOptimizePeakIndice);
+				if ((indice + maxAggSize / 2) < features.length) {
 
-				j = 0;
-
-				while (((i + j) < features.length) && (features[i + j][0] == 0)) {
-					j++;
-				}
-
-				int[] interval = new int[3];
-				interval[0] = 0;
-				interval[1] = i;
-				interval[2] = j;
-				featureStructure.add(interval);
-
-			}
-
-			i = i + j;
-
-		}
-
-		// compute agg
-		i = 0;
-		while (i < featureStructure.size()) {
-			while ((i < featureStructure.size()) && (currentAggSize < maxAggSize)
-					&& !((featureStructure.get(i)[0] == 0) && (featureStructure.get(i)[2] >= blankSize))) {
-				if ((featureStructure.get(i)[0] != 0)) {
-					currentAggSize = currentAggSize + featureStructure.get(i)[2];
-					for (int k = featureStructure.get(i)[1]; k < featureStructure.get(i)[1]
-							+ featureStructure.get(i)[2]; k++) {
-						for (int l = 0; l < stats.length; l++) {
-							stats[l].addValue(features[k][l]);
+					for (int j = indice - maxAggSize / 2 + 1; j <= indice + maxAggSize / 2; j++) {
+						for (int k = 0; k < filterBankNumFilters + 1; k++) {
+							stats[k].addValue(features[j][k]);
 						}
+
 					}
+
+					double[] pooledFeature = new double[8 * (filterBankNumFilters + 1) + 3];
+
+					for (int k = 0; k < filterBankNumFilters + 1; k++) {
+						pooledFeature[k] = stats[k].getMean();
+						pooledFeature[k + filterBankNumFilters + 1] = stats[k].getStandardDeviation();
+						pooledFeature[k + 3 * (filterBankNumFilters + 1)] = stats[k].getPercentile(percentileLow);
+						pooledFeature[k + 2 * (filterBankNumFilters + 1)] = stats[k].getPercentile(percentileHigh);
+						pooledFeature[k + 4 * (filterBankNumFilters + 1)] = stats[k].getKurtosis();
+						pooledFeature[k + 5 * (filterBankNumFilters + 1)] = stats[k].getSkewness();
+						pooledFeature[k + 6 * (filterBankNumFilters + 1)] = Arrays.stream(delta(stats[k].getValues()))
+								.sum();
+						pooledFeature[k + 7 * (filterBankNumFilters + 1)] = Arrays
+								.stream(delta(delta(stats[k].getValues()))).sum();
+
+					}
+
+					pooledFeature[pooledFeature.length - 3] = currentAggSize;
+
+					pooledFeatures.add(pooledFeature);
+
+					for (int k = 0; k < stats.length; k++)
+						stats[k].clear();
+
 				}
-				i++;
-
 			}
-
-			if (currentAggSize >= (maxAggSize - deltaAggSize)) {
-
-				double[] pooledFeature = new double[8 * (filterBankNumFilters + 1) + 1 + 1 + 1];
-
-				for (int k = 0; k < filterBankNumFilters + 1; k++) {
-					pooledFeature[k] = stats[k].getMean();
-					pooledFeature[k + filterBankNumFilters + 1] = stats[k].getStandardDeviation();
-					pooledFeature[k + 3 * (filterBankNumFilters + 1)] = stats[k].getPercentile(15);
-					pooledFeature[k + 2 * (filterBankNumFilters + 1)] = stats[k].getPercentile(90);
-					pooledFeature[k + 4 * (filterBankNumFilters + 1)] = stats[k].getKurtosis();
-					pooledFeature[k + 5 * (filterBankNumFilters + 1)] = stats[k].getSkewness();
-					pooledFeature[k + 6 * (filterBankNumFilters + 1)] = Arrays.stream(delta(stats[k].getValues()))
-							.sum();
-					pooledFeature[k + 7 * (filterBankNumFilters + 1)] = Arrays
-							.stream(delta(delta(stats[k].getValues()))).sum();
-
-				}
-
-				pooledFeature[pooledFeature.length - 3] = currentAggSize;
-
-				pooledFeatures.add(pooledFeature);
-
-			}
-
-			currentAggSize = 0;
-			for (int k = 0; k < stats.length; k++)
-				stats[k].clear();
-
-			i++;
-
 		}
 
 		if (pooledFeatures.size() > 1) {
@@ -171,7 +140,7 @@ public class DSP {
 	 *         feature vector.
 	 */
 
-	public double[][] melSpectraMeanNormalisation(double[][] features, double percentile) {
+	public double[][] melSpectraMeanNormalisation(double[][] features) {
 
 		double[][] normalizedFeat = new double[features.length][filterBankNumFilters + 1];
 		DescriptiveStatistics stats = new DescriptiveStatistics();
@@ -207,14 +176,13 @@ public class DSP {
 				stats.addValue(normalizedFeat[j][i]);
 			}
 
-			double median = stats.getPercentile(percentile);
+			// double median = stats.getPercentile(50);
 
 			for (int j = 0; j < normalizedFeat.length; j++) {
-				
-				if ((normalizedFeat[j][i] - median) < 0) {
 
-						normalizedFeat[j][i] = 0;
-	
+				if ((normalizedFeat[j][i]) < 0) {
+
+					normalizedFeat[j][i] = 0;
 
 				}
 
@@ -226,7 +194,8 @@ public class DSP {
 
 	}
 
-	public List<double[]> processMelSpectra(double[][] features, double[] energy, double percentile) {
+	public List<double[]> processMelSpectra(double[][] features, double[] energy, double[] peakdetectPositions,
+			double[] peakdetectAmplitudes) {
 
 		double[][] concatFeat = new double[features.length][filterBankNumFilters + 1];
 
@@ -243,7 +212,7 @@ public class DSP {
 
 		}
 
-		return pooling(melSpectraMeanNormalisation(concatFeat, percentile));
+		return pooling(melSpectraMeanNormalisation(concatFeat), peakdetectPositions, peakdetectAmplitudes);
 
 	}
 
@@ -294,4 +263,33 @@ public class DSP {
 
 	}
 
+	int optimizeIndice(double peakdetectPositions, double[][] features, int delta) {
+		int featuresIndice = (int) (Math.floor(peakdetectPositions / hopSize) - 1);
+		int correctedIndice = featuresIndice;
+		double[] energySum = new double[2 * delta + 1];
+
+		for (int i = -delta; i <= delta; i++) {
+			for (int j = featuresIndice - maxAggSize / 2 + 1; j <= featuresIndice + maxAggSize / 2; j++) {
+				if (((j + i) >= 0) && ((j + i + maxAggSize / 2) < features.length))
+					energySum[i + delta] = energySum[i + delta] + features[j + i][0];
+				else
+					energySum[i + delta] = Double.NEGATIVE_INFINITY;
+			}
+		}
+
+		OptionalDouble var = Arrays.stream(energySum).max();
+
+		if (var.isPresent()) {
+			double max = Arrays.stream(energySum).max().getAsDouble();
+
+			for (int i = 0; i < energySum.length; i++) {
+				if (energySum[i] == max) {
+					correctedIndice = featuresIndice - delta + i;
+				}
+			}
+		}
+
+		return correctedIndice;
+
+	}
 }
