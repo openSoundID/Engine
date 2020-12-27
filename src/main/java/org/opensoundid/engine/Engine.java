@@ -32,11 +32,7 @@ public class Engine {
 
 		for (int i = 0; i < resultat.length; i++) {
 			for (int j = 0; j < resultat[i].length; j++) {
-				if ((aggregation[j] > 1.0) && (resultat[i][j] > 1.0)) {
-					aggregation[j] = aggregation[j] * resultat[i][j];
-				} else {
-					aggregation[j] = aggregation[j] + resultat[i][j];
-				}
+				aggregation[j] = aggregation[j] + resultat[i][j];				
 			}
 		}
 
