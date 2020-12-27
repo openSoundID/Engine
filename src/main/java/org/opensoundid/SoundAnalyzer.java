@@ -81,16 +81,17 @@ public class SoundAnalyzer {
 
 						double[][] features = jsonLowLevelFeatures.getLowlevel().getMfcc_bands_log();
 						double[] energy = jsonLowLevelFeatures.getLowlevel().getEnergy();
-						double zeroCrossingRate = jsonLowLevelFeatures.getDescription().getZero_crossing_rate()[0];
-						double[] envelope = jsonLowLevelFeatures.getDescription().getEnvelope()[0];
+						double[] peakdetectPositions = jsonLowLevelFeatures.getDescription().getPeakdetect_positions()[0];
+						double[] peakdetectAmplitudes = jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0];
+
 
 						String date = dateFormatter
 								.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
 						String time = timeFormatter
 								.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
 
-						List<double[]> normalizedFeatures = mlFeatures.computeMLFeatures(zeroCrossingRate, envelope,
-								features, energy, date, time);
+						List<double[]> normalizedFeatures = mlFeatures.computeMLFeatures(peakdetectPositions,peakdetectAmplitudes,features, energy, date, time);
+						
 
 						if (!normalizedFeatures.isEmpty()) {
 							Instances dataRaw = new Instances("Sound Analyse",
