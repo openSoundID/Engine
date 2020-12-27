@@ -1,33 +1,26 @@
 package org.opensoundid.model.impl;
 
 public class Description {
-	  double[] zero_crossing_rate;
-	  double[] flatness;
-	  double[][] envelope;
+	  double[][] peakdetect_positions;
+	  double[][] peakdetect_amplitudes;
 
-		public double[] getFlatness() {
-			return flatness;
-		}
-
-		public void setFlatness(double[] flatness) {
-			this.flatness = flatness;
-		}
 	  
 	  
-	  public double[] getZero_crossing_rate() {
-		return zero_crossing_rate;
+	  public double[][] getPeakdetect_positions() {
+		return peakdetect_positions;
+	}
+	  
+	  public double[][] getPeakdetect_amplitudes() {
+		return peakdetect_amplitudes;
 	}
 
-	public void setZero_crossing_rate(double[] zero_crossing_rate) {
-		this.zero_crossing_rate = zero_crossing_rate;
+
+	public void setPeakdetect_positions(double[][] peakdetect_positions) {
+		this.peakdetect_positions = peakdetect_positions;
 	}
 
-	public double[][] getEnvelope() {
-		return envelope;
-	}
-
-	public void setEnvelope(double[][] envelope) {
-		this.envelope = envelope;
+	public void setPeakdetect_amplitudes(double[][] peakdetect_amplitudes) {
+		this.peakdetect_amplitudes = peakdetect_amplitudes;
 	}
 
 
