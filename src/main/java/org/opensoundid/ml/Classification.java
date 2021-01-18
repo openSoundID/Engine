@@ -33,7 +33,8 @@ import weka.classifiers.trees.J48;
 import weka.core.Instances;
 import weka.core.SerializationHelper;
 import weka.core.converters.ArffLoader;
-
+import weka.filters.Filter;
+import weka.filters.supervised.instance.ClassBalancer;
 import weka.filters.unsupervised.attribute.PrincipalComponents;
 
 public class Classification {
@@ -77,12 +78,17 @@ public class Classification {
 				Instances trainingDataSet = loader.getDataSet();
 				trainingDataSet.setClassIndex(trainingDataSet.numAttributes() - 1);
 				
+				ClassBalancer classBalancer = new ClassBalancer();
+				classBalancer.setInputFormat(trainingDataSet);
+				trainingDataSet = Filter.useFilter(trainingDataSet, classBalancer);
+				
 				rotationForest.setNumExecutionSlots(rotationForestNumExecutionSlots);
 				rotationForest.setMaxGroup(rotationForestMaxGroup);
 				rotationForest.setMinGroup(rotationForestMinGroup);
 				rotationForest.setNumIterations(rotationForestNumIterations);
 				J48 j48 = new J48();
 				j48.setSeed(1);
+				j48.setConfidenceFactor(0.25f);
 				rotationForest.setClassifier(j48);
 				PrincipalComponents principalComponents = new PrincipalComponents();
 				principalComponents.setVarianceCovered(principalComponentsVarianceCovered);

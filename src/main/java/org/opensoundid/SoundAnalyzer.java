@@ -47,6 +47,7 @@ public class SoundAnalyzer {
 
 		FeaturesSpecifications featureSpec = new FeaturesSpecifications(config);
 		Features mlFeatures = new Features(config);
+		List<double[]> normalizedFeatures;
 		Classification classification = new Classification();
 
 		String recordDirectory = config.getString("soundAnalyzer.recordDirectory");
@@ -79,36 +80,42 @@ public class SoundAnalyzer {
 						JsonLowLevelFeatures jsonLowLevelFeatures = objectMapper.readValue(jsonFile,
 								JsonLowLevelFeatures.class);
 
-						double[][] features = jsonLowLevelFeatures.getLowlevel().getMfcc_bands_log();
-						double[] energy = jsonLowLevelFeatures.getLowlevel().getEnergy();
-						double[] peakdetectPositions = jsonLowLevelFeatures.getDescription().getPeakdetect_positions()[0];
-						double[] peakdetectAmplitudes = jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0];
-
-
 						String date = dateFormatter
 								.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
 						String time = timeFormatter
 								.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
 
-						List<double[]> normalizedFeatures = mlFeatures.computeMLFeatures(peakdetectPositions,peakdetectAmplitudes,features, energy, date, time);
-						
+						double[][] features = jsonLowLevelFeatures.getLowlevel() != null
+								? jsonLowLevelFeatures.getLowlevel().getMfccBandLogs()
+								: null;
+						double[] energy = jsonLowLevelFeatures.getLowlevel() != null
+								? jsonLowLevelFeatures.getLowlevel().getEnergy()
+								: null;
+						int[] chunkIDs = jsonLowLevelFeatures.getLowlevel() != null
+								? jsonLowLevelFeatures.getLowlevel().getChunckID()
+								: null;
+						double[] peakdetectPositions = jsonLowLevelFeatures.getDescription() != null
+								? jsonLowLevelFeatures.getDescription().getPeakdetect_positions()[0]
+								: null;
+						double[] peakdetectAmplitudes = jsonLowLevelFeatures.getDescription() != null
+								? jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0]
+								: null;
+
+						normalizedFeatures=((features != null) && (energy != null) && (chunkIDs != null) && (peakdetectPositions != null)&& (peakdetectAmplitudes != null))? mlFeatures.computeMLFeatures(peakdetectPositions, peakdetectAmplitudes,chunkIDs, features, energy, date, time):new ArrayList<double[]>();
 
 						if (!normalizedFeatures.isEmpty()) {
 							Instances dataRaw = new Instances("Sound Analyse",
 									(ArrayList<Attribute>) featureSpec.getAttributes(), 0);
+							dataRaw.setClassIndex(featureSpec.getNumOfAttributes());
 
-							for (int i = 0; i < normalizedFeatures.size(); i++) {
+							for (double[] normalizedFeature : normalizedFeatures) {
 
-								double[] instanceValue = new double[dataRaw.numAttributes()];
-
-								instanceValue = Arrays.copyOf(normalizedFeatures.get(i),
-										normalizedFeatures.get(i).length);
-
+								double[] instanceValue = Arrays.copyOf(normalizedFeature, dataRaw.numAttributes());
 								dataRaw.add(new DenseInstance(1.0, instanceValue));
 
 							}
 
-							dataRaw.setClassIndex(dataRaw.numAttributes() - 1);
+							
 							double[][] resultat = classification.evaluate(dataRaw);
 
 							Map<Integer, Long> scores = engine.computeScore(resultat);
@@ -150,14 +157,10 @@ public class SoundAnalyzer {
 								}
 							});
 						} else {
-							try {
+							
 								Files.write(Paths.get(reportName), "Empty instance\n".getBytes(),
 										StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-							} catch (IOException ex) {
-
-								logger.error(ex.getMessage(), ex);
-
-							}
+							
 						}
 
 					} else {

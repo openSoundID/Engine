@@ -43,6 +43,7 @@ import weka.core.Instances;
 import weka.core.converters.ArffLoader;
 import weka.core.converters.ArffSaver;
 import weka.filters.Filter;
+import weka.filters.supervised.instance.ClassBalancer;
 import weka.filters.supervised.instance.SpreadSubsample;
 import weka.filters.unsupervised.attribute.PrincipalComponents;
 import weka.filters.unsupervised.instance.RemoveMisclassified;
@@ -53,9 +54,6 @@ public class Features {
 
 	private int featuresNumber;
 	private double trainingSizePct;
-	private double percentileHigh;
-	private double percentileLow;
-	private double envelopeThreshold;
 	private String featuresDirectory;
 	private String arffTrainingFiles;
 	private String arffTestFiles;
@@ -83,9 +81,6 @@ public class Features {
 			spreadSubsample = new SpreadSubsample();
 			featuresNumber = config.getInt("features.featuresNumber");
 			trainingSizePct = config.getDouble("features.trainingSizePct");
-			percentileHigh = config.getDouble("features.percentileHigh");
-			percentileLow = config.getDouble("features.percentileLow");
-			envelopeThreshold = config.getDouble("features.envelopeThreshold");
 			featuresDirectory = config.getString("features.featuresDirectory");
 			arffTrainingFiles = config.getString("features.arffTrainingFiles");
 			arffTestFiles = config.getString("features.arffTestFiles");
@@ -210,7 +205,7 @@ public class Features {
 			spreadSubsample.setInputFormat(train);
 			spreadSubsample.setRandomSeed(1);
 			train = Filter.useFilter(train, spreadSubsample);
-
+			
 			RotationForest rotationForest = new RotationForest();
 			rotationForest.setNumExecutionSlots(rotationForestNumExecutionSlots);
 			rotationForest.setMaxGroup(rotationForestMaxGroup);
@@ -225,7 +220,7 @@ public class Features {
 
 			RemoveMisclassified removeMisclassified = new RemoveMisclassified();
 			removeMisclassified.setClassifier(rotationForest);
-			removeMisclassified.setMaxIterations(1);
+			removeMisclassified.setMaxIterations(3);
 			removeMisclassified.setThreshold(0.1);
 			removeMisclassified.setNumFolds(0);
 			removeMisclassified.setClassIndex(-1);
@@ -343,8 +338,8 @@ public class Features {
 			int randday = 0;
 			int randminute = 0;
 
-			randday = ThreadLocalRandom.current().nextInt(-10, 10);
-			randminute = ThreadLocalRandom.current().nextInt(-30, 30);
+			randday = ThreadLocalRandom.current().nextInt(-5, 5);
+			randminute = ThreadLocalRandom.current().nextInt(-5, 5);
 
 			normalizedFeature[normalizedFeature.length - 1] = !parseError ? randday + calendar.get(Calendar.DAY_OF_YEAR)
 					: Double.NaN;
@@ -363,11 +358,11 @@ public class Features {
 
 	}
 
-	public List<double[]> computeMLFeatures(double[] peakdetectPositions, double[] peakdetectAmplitudes, double[][] features,
-			double[] energy, String date, String time) {
+	public List<double[]> computeMLFeatures(double[] peakdetectPositions, double[] peakdetectAmplitudes, int chunkIDs[],
+			double[][] features, double[] energy, String date, String time) {
 
-
-		List<double[]> normalizedFeatures = dsp.processMelSpectra(features, energy, peakdetectPositions, peakdetectAmplitudes );
+		List<double[]> normalizedFeatures = dsp.processMelSpectra(chunkIDs, features, energy, peakdetectPositions,
+				peakdetectAmplitudes);
 		addMetaData(normalizedFeatures, date, time);
 
 		return normalizedFeatures;
@@ -383,23 +378,37 @@ public class Features {
 			File jsonFile = new File(jsonDirectory + "/" + recordId + ".json");
 			JsonLowLevelFeatures jsonLowLevelFeatures = objectMapper.readValue(jsonFile, JsonLowLevelFeatures.class);
 
-			double[][] features = jsonLowLevelFeatures.getLowlevel().getMfcc_bands_log();
-			double[] energy = jsonLowLevelFeatures.getLowlevel().getEnergy();
-			double[] peakdetectPositions = jsonLowLevelFeatures.getDescription().getPeakdetect_positions()[0];
-			double[] peakdetectAmplitudes = jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0];
-			
-			List<double[]> normalizedFeatures = computeMLFeatures(peakdetectPositions,peakdetectAmplitudes, features, energy, date,
-					time);
+			double[][] features = jsonLowLevelFeatures.getLowlevel() != null
+					? jsonLowLevelFeatures.getLowlevel().getMfccBandLogs()
+					: null;
+			double[] energy = jsonLowLevelFeatures.getLowlevel() != null
+					? jsonLowLevelFeatures.getLowlevel().getEnergy()
+					: null;
+			int[] chunkIDs = jsonLowLevelFeatures.getLowlevel() != null
+					? jsonLowLevelFeatures.getLowlevel().getChunckID()
+					: null;
+			double[] peakdetectPositions = jsonLowLevelFeatures.getDescription() != null
+					? jsonLowLevelFeatures.getDescription().getPeakdetect_positions()[0]
+					: null;
+			double[] peakdetectAmplitudes = jsonLowLevelFeatures.getDescription() != null
+					? jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0]
+					: null;
 
-			// Directory creation
-			Path path = Paths.get(featuresDirectory);
-			if (!Files.exists(path)) {
+			if ((features != null) && (energy != null) && (chunkIDs != null) && (peakdetectPositions != null)
+					&& (peakdetectAmplitudes != null)) {
+				List<double[]> normalizedFeatures = computeMLFeatures(peakdetectPositions, peakdetectAmplitudes,
+						chunkIDs, features, energy, date, time);
 
-				Files.createDirectories(path);
+				// Directory creation
+				Path path = Paths.get(featuresDirectory);
+				if (!Files.exists(path)) {
 
+					Files.createDirectories(path);
+
+				}
+
+				saveMLStandardizedFeature(path + "/" + recordId + ".arff", normalizedFeatures, birdID);
 			}
-
-			saveMLStandardizedFeature(path + "/" + recordId + ".arff", normalizedFeatures, birdID);
 
 		} catch (Exception ex) {
 
