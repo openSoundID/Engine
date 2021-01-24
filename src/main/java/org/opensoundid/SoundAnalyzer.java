@@ -14,13 +14,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.cli.CommandLine;
-import org.apache.commons.cli.CommandLineParser;
-import org.apache.commons.cli.DefaultParser;
-import org.apache.commons.cli.HelpFormatter;
-import org.apache.commons.cli.Option;
-import org.apache.commons.cli.Options;
-import org.apache.commons.cli.ParseException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensoundid.configuration.EngineConfiguration;
@@ -40,27 +33,71 @@ import weka.core.Instances;
 public class SoundAnalyzer {
 
 	private static final Logger logger = LogManager.getLogger(SoundAnalyzer.class);
+	EngineConfiguration config = new EngineConfiguration();
+	FeaturesSpecifications featureSpec = new FeaturesSpecifications(config);
 
-	public static void main(String[] args) {
+	Instances jsonFileToFeatures(String jsonFilePath) throws Exception {
 
-		EngineConfiguration config = new EngineConfiguration();
-
-		FeaturesSpecifications featureSpec = new FeaturesSpecifications(config);
 		Features mlFeatures = new Features(config);
-		List<double[]> normalizedFeatures;
-		Classification classification = new Classification();
+		SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
+		SimpleDateFormat timeFormatter = new SimpleDateFormat("hh:mm");
+		ObjectMapper objectMapper = new ObjectMapper();
+		File jsonFile = new File(jsonFilePath);
 
+		Instances dataRaw = new Instances("Sound Analyze", (ArrayList<Attribute>) featureSpec.getAttributes(), 0);
+
+		JsonLowLevelFeatures jsonLowLevelFeatures = objectMapper.readValue(jsonFile, JsonLowLevelFeatures.class);
+
+		String date = dateFormatter.format(Files.getLastModifiedTime(Paths.get(jsonFilePath)).toMillis());
+		String time = timeFormatter.format(Files.getLastModifiedTime(Paths.get(jsonFilePath)).toMillis());
+
+		double[][] features = jsonLowLevelFeatures.getLowlevel() != null
+				? jsonLowLevelFeatures.getLowlevel().getMfccBandLogs()
+				: null;
+		double[] energy = jsonLowLevelFeatures.getLowlevel() != null ? jsonLowLevelFeatures.getLowlevel().getEnergy()
+				: null;
+		int[] chunkIDs = jsonLowLevelFeatures.getLowlevel() != null ? jsonLowLevelFeatures.getLowlevel().getChunckID()
+				: null;
+		double[] peakdetectPositions = jsonLowLevelFeatures.getDescription() != null
+				? jsonLowLevelFeatures.getDescription().getPeakdetect_positions()[0]
+				: null;
+		double[] peakdetectAmplitudes = jsonLowLevelFeatures.getDescription() != null
+				? jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0]
+				: null;
+
+		List<double[]> normalizedFeatures = ((features != null) && (energy != null) && (chunkIDs != null)
+				&& (peakdetectPositions != null) && (peakdetectAmplitudes != null))
+						? mlFeatures.computeMLFeatures(peakdetectPositions, peakdetectAmplitudes, chunkIDs, features,
+								energy, date, time)
+						: new ArrayList<>();
+
+		if (!normalizedFeatures.isEmpty()) {
+
+			dataRaw.setClassIndex(featureSpec.getNumOfAttributes());
+
+			for (double[] normalizedFeature : normalizedFeatures) {
+
+				double[] instanceValue = Arrays.copyOf(normalizedFeature, dataRaw.numAttributes());
+				dataRaw.add(new DenseInstance(1.0, instanceValue));
+
+			}
+
+		}
+		return dataRaw;
+	}
+
+	void analyze() {
+
+		Classification classification = new Classification();
 		String recordDirectory = config.getString("soundAnalyzer.recordDirectory");
 		Engine engine = new Engine(config);
 		ScoreAnalyzer scoreAnalyzer = new ScoreAnalyzer();
 		ScoreFilter scoreFilter = new ScoreFilter();
 		ScoreLogger scoreLogger = new ScoreLogger();
-
 		ResultSender resultSender = new ResultSender();
 		SimpleDateFormat simpleDateFormat = new SimpleDateFormat(config.getString("SoundAnalyzer.dateFormat"));
-		SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
-		SimpleDateFormat timeFormatter = new SimpleDateFormat("hh:mm");
 		String endFile = config.getString("SoundAnalyzer.endFile");
+		boolean analyzeLastFileOnly = config.getBoolean("SoundAnalyzer.analyzeLastFileOnly");
 
 		while (!Files.exists(Paths.get(endFile))) {
 			try (Stream<Path> walk = Files.walk(Paths.get(recordDirectory))) {
@@ -70,109 +107,91 @@ public class SoundAnalyzer {
 
 				if (!jsonFilePaths.isEmpty()) {
 
-					// control if the wav file has not been already processed
-					String jsonFileName = jsonFilePaths.get(0);
-					String reportName = jsonFileName.substring(0, jsonFileName.lastIndexOf('.')) + ".txt";
-					if (!Files.exists(Paths.get(reportName))) {
+					if (analyzeLastFileOnly) {
+						String jsonFilePath = jsonFilePaths.get(0);
+						jsonFilePaths = new ArrayList<>();
+						jsonFilePaths.add(jsonFilePath);
+					}
+					for (String jsonFilePath : jsonFilePaths) {
+						
+						// control if the wav file has not been already processed
 
-						ObjectMapper objectMapper = new ObjectMapper();
-						File jsonFile = new File(jsonFileName);
-						JsonLowLevelFeatures jsonLowLevelFeatures = objectMapper.readValue(jsonFile,
-								JsonLowLevelFeatures.class);
-
-						String date = dateFormatter
-								.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
-						String time = timeFormatter
-								.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
-
-						double[][] features = jsonLowLevelFeatures.getLowlevel() != null
-								? jsonLowLevelFeatures.getLowlevel().getMfccBandLogs()
-								: null;
-						double[] energy = jsonLowLevelFeatures.getLowlevel() != null
-								? jsonLowLevelFeatures.getLowlevel().getEnergy()
-								: null;
-						int[] chunkIDs = jsonLowLevelFeatures.getLowlevel() != null
-								? jsonLowLevelFeatures.getLowlevel().getChunckID()
-								: null;
-						double[] peakdetectPositions = jsonLowLevelFeatures.getDescription() != null
-								? jsonLowLevelFeatures.getDescription().getPeakdetect_positions()[0]
-								: null;
-						double[] peakdetectAmplitudes = jsonLowLevelFeatures.getDescription() != null
-								? jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0]
-								: null;
-
-						normalizedFeatures=((features != null) && (energy != null) && (chunkIDs != null) && (peakdetectPositions != null)&& (peakdetectAmplitudes != null))? mlFeatures.computeMLFeatures(peakdetectPositions, peakdetectAmplitudes,chunkIDs, features, energy, date, time):new ArrayList<double[]>();
-
-						if (!normalizedFeatures.isEmpty()) {
-							Instances dataRaw = new Instances("Sound Analyse",
-									(ArrayList<Attribute>) featureSpec.getAttributes(), 0);
-							dataRaw.setClassIndex(featureSpec.getNumOfAttributes());
-
-							for (double[] normalizedFeature : normalizedFeatures) {
-
-								double[] instanceValue = Arrays.copyOf(normalizedFeature, dataRaw.numAttributes());
-								dataRaw.add(new DenseInstance(1.0, instanceValue));
-
-							}
-
+						String reportName = jsonFilePath.substring(0, jsonFilePath.lastIndexOf('.')) + ".txt";
+						if (!Files.exists(Paths.get(reportName))) {
 							
-							double[][] resultat = classification.evaluate(dataRaw);
+							Instances instances = jsonFileToFeatures(jsonFilePath);
+							if (instances.isEmpty()) {
 
-							Map<Integer, Long> scores = engine.computeScore(resultat);
-							Map<Integer, Long> analyzedScores = scoreAnalyzer.analyzeScore(scores);
-
-							analyzedScores.forEach((k, v) -> {
-								try {
-
-									Files.write(Paths.get(reportName),
-											String.format("signature %d:%d%n", k, v).getBytes(),
-											StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-
-								} catch (IOException ex) {
-
-									logger.error(ex.getMessage(), ex);
-								}
-							});
-
-							Files.write(Paths.get(reportName), String.format("Filtred Score%n").getBytes(),
-									StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-
-							Map<Integer, Long> filtredScores = scoreFilter.filtreScore(analyzedScores, config);
-
-							filtredScores.forEach((birdId, score) -> {
-								try {
-									String fileDate = simpleDateFormat
-											.format(Files.getLastModifiedTime(Paths.get(jsonFileName)).toMillis());
-									BirdObservation birdObservation = new BirdObservation(fileDate, birdId);
-									Files.write(Paths.get(reportName),
-											String.format("signature %d:%d%n", birdId, score).getBytes(),
-											StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-									scoreLogger.logScore(fileDate, birdId, featureSpec.findBirdName(birdId), score);
-									if (birdObservation.getBirdCallID() != 0)
-										resultSender.sendResult(birdObservation);
-
-								} catch (IOException ex) {
-
-									logger.error(ex.getMessage(), ex);
-								}
-							});
-						} else {
-							
 								Files.write(Paths.get(reportName), "Empty instance\n".getBytes(),
 										StandardOpenOption.CREATE, StandardOpenOption.APPEND);
-							
-						}
 
-					} else {
-						Thread.sleep(10);
+							} else {
+								
+								double[][] resultat = classification.evaluate(instances);
+      							Map<Integer, Long> scores = engine.computeScore(resultat);
+								Map<Integer, Long> analyzedScores = scoreAnalyzer.analyzeScore(scores);
+								analyzedScores.forEach((k, v) -> {
+									try {
+
+										Files.write(Paths.get(reportName),
+												String.format("class %d:%d%n", k, v).getBytes(),
+												StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+
+									} catch (IOException ex) {
+
+										logger.error(ex.getMessage(), ex);
+									}
+								});
+
+								Files.write(Paths.get(reportName), String.format("Filtred Score%n").getBytes(),
+										StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+
+								Map<Integer, Long> filtredScores = scoreFilter.filtreScore(analyzedScores, config);
+
+								filtredScores.forEach((birdId, score) -> {
+									try {
+										String fileDate = simpleDateFormat
+												.format(Files.getLastModifiedTime(Paths.get(jsonFilePath)).toMillis());
+										BirdObservation birdObservation = new BirdObservation(fileDate, birdId);
+										Files.write(Paths.get(reportName),
+												String.format("signature %d:%d%n", birdId, score).getBytes(),
+												StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+										scoreLogger.logScore(Paths.get(jsonFilePath).getFileName().toString(), fileDate,
+												birdId, featureSpec.findBirdName(birdId), score);
+										if (birdObservation.getBirdCallID() != 0)
+											resultSender.sendResult(birdObservation);
+
+									} catch (IOException ex) {
+
+										logger.error(ex.getMessage(), ex);
+									}
+								});
+							}
+
+						}
 					}
+				} else {
+					Thread.sleep(10);
 				}
-			} catch (Exception ex) {
+
+			}
+
+			catch (Exception ex) {
 
 				logger.error(ex.getMessage(), ex);
 			}
-
 		}
+
+	}
+
+	SoundAnalyzer() {
+
+	}
+
+	public static void main(String[] args) {
+
+		SoundAnalyzer soundAnalyzer = new SoundAnalyzer();
+		soundAnalyzer.analyze();
 
 	}
 
