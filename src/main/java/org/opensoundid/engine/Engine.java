@@ -15,11 +15,12 @@ public class Engine {
 	EngineConfiguration engineConfiguration;
 	FeaturesSpecifications featuresSpecifications;
 	double percentile;
-
+	double threshold;
 	public Engine(EngineConfiguration engineConfiguration) {
 		this.engineConfiguration = engineConfiguration;
 		featuresSpecifications = new FeaturesSpecifications(engineConfiguration);
 		percentile = engineConfiguration.getDouble("engine.percentile");
+		threshold = engineConfiguration.getDouble("engine.threshold");
 
 	}
 
@@ -32,11 +33,13 @@ public class Engine {
 
 		for (int i = 0; i < resultat.length; i++) {
 			for (int j = 0; j < resultat[i].length; j++) {
-				aggregation[j] = aggregation[j] + resultat[i][j];				
+				if(resultat[i][j]>threshold)
+				   aggregation[j] = aggregation[j] + resultat[i][j];				
 			}
 		}
 
 		for (int i = 0; i < aggregation.length; i++) {
+			
 			stats.addValue(aggregation[i]);
 		}
 
