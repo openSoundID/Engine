@@ -12,7 +12,7 @@ public class ScoreLogger {
 
 	private static final Logger logger = LogManager.getLogger(ScoreLogger.class);
 	private String savePath;
-	private CSVFormat csvFileFormat = CSVFormat.DEFAULT.withHeader("timestamp", "BirdId", "BirdName", "Score")
+	private CSVFormat csvFileFormat = CSVFormat.DEFAULT.withHeader("filename","timestamp", "BirdId", "BirdName", "Score")
 			.withFirstRecordAsHeader();
 	private EngineConfiguration engineConfiguration = new EngineConfiguration();
 
@@ -22,12 +22,12 @@ public class ScoreLogger {
 
 	}
 
-	public void logScore(String timestamp, Integer birdID, String birdName, Long score) {
+	public void logScore(String fileName,String timestamp, Integer birdID, String birdName, Long score) {
 
 		try (FileWriter fileWriter = new FileWriter(savePath, true);
 				CSVPrinter csvFilePrinter = new CSVPrinter(fileWriter, csvFileFormat);) {
 
-			csvFilePrinter.printRecord(timestamp, birdID, birdName, score);
+			csvFilePrinter.printRecord(fileName,timestamp, birdID, birdName, score);
 
 			fileWriter.flush();
 
