@@ -220,9 +220,8 @@ public class Features {
 
 			RemoveMisclassified removeMisclassified = new RemoveMisclassified();
 			removeMisclassified.setClassifier(rotationForest);
-			removeMisclassified.setMaxIterations(3);
+			removeMisclassified.setMaxIterations(1);
 			removeMisclassified.setThreshold(0.1);
-			removeMisclassified.setNumFolds(0);
 			removeMisclassified.setClassIndex(-1);
 			removeMisclassified.setInputFormat(train);
 
