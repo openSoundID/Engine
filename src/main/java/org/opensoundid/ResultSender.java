@@ -34,9 +34,10 @@ public class ResultSender {
 
 		try {
 
-			client.target(engineConfiguration.getString("engine.ResultSender.RestUrl"))
-					.request(MediaType.APPLICATION_JSON)
-					.post(Entity.entity(birdObservation, MediaType.APPLICATION_JSON));
+			if (engineConfiguration.getBoolean("ResultSender.enable")) {
+				client.target(engineConfiguration.getString("ResultSender.RestUrl")).request(MediaType.APPLICATION_JSON)
+						.post(Entity.entity(birdObservation, MediaType.APPLICATION_JSON));
+			}
 		} catch (Exception ex) {
 			logger.error(ex.getMessage(), ex);
 		}
