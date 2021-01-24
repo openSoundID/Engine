@@ -57,7 +57,12 @@ public class EngineConfiguration {
 		return config.getDouble(parameterName);
 
 	}
+	
+	public boolean getBoolean(String parameterName) {
+		return config.getBoolean(parameterName);
 
+	}
+	
 	public String[] getStringArray(String parameterName) {
 		return config.getStringArray(parameterName);
 
