@@ -88,7 +88,6 @@ public class Classification {
 				rotationForest.setNumIterations(rotationForestNumIterations);
 				J48 j48 = new J48();
 				j48.setSeed(1);
-				j48.setConfidenceFactor(0.25f);
 				rotationForest.setClassifier(j48);
 				PrincipalComponents principalComponents = new PrincipalComponents();
 				principalComponents.setVarianceCovered(principalComponentsVarianceCovered);
@@ -128,8 +127,7 @@ public class Classification {
 				double[] predictionDistribution = classifier.distributionForInstance(testInstances.instance(i));
 
 				for (int j = 0; j < predictionDistribution.length; j++) {
-					resultat[i][j] = predictionDistribution[j]
-							* testInstances.instance(i).value(testInstances.numAttributes() - 2);
+					resultat[i][j] = predictionDistribution[j]*100;
 				}
 
 			}
