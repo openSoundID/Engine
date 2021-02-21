@@ -73,7 +73,7 @@ public class NoiseRecords {
 			Query<Bird> queryBird = session.createNamedQuery("Bird.findById", Bird.class).setParameter("id", classId);
 			Bird bird = queryBird.getSingleResult();
 
-			Record record = new Record("NO-"+recordID, bird, "", "", "", "", "", "", "", "", "", "", "", "NO");
+			Record record = new Record("NO-"+recordID, bird, "", "", "", "", "", "", "", "", "", "", "", "NO",true);
 			session.merge(record);
 
 			session.getTransaction().commit();
