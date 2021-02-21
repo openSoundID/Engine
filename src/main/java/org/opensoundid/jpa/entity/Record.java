@@ -15,7 +15,8 @@ import javax.persistence.Table;
 public class Record {
 
 	public Record(String id, Bird bird, String countries, String locality, String latitude, String longitude,
-			String altitude, String quality, String length, String time, String date, String remark, String type, String origin) {
+			String altitude, String quality, String length, String time, String date, String remark, String type,
+			String origin, boolean enabled) {
 		super();
 		this.id = id;
 		this.bird = bird;
@@ -31,6 +32,7 @@ public class Record {
 		this.remark = remark;
 		this.type = type;
 		this.origin = origin;
+		this.enabled = enabled;
 	}
 
 	@Id
@@ -70,13 +72,15 @@ public class Record {
 
 	@Column(name = "rmk")
 	private String remark;
-	
+
 	@Column(name = "type")
 	private String type;
-	
+
 	@Column(name = "origin")
 	private String origin;
 
+	@Column(name = "enabled")
+	private boolean enabled;
 
 	public String getType() {
 		return type;
@@ -192,6 +196,14 @@ public class Record {
 
 	public void setOrigin(String origin) {
 		this.origin = origin;
+	}
+
+	public boolean isEnabled() {
+		return enabled;
+	}
+
+	public void setEnabled(boolean enabled) {
+		this.enabled = enabled;
 	}
 
 }
