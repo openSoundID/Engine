@@ -86,7 +86,7 @@ public class XenoCantoRecord {
 				Record record = new Record("XC-" + XCRecording.getId(), bird, XCRecording.getCnt(),
 						XCRecording.getLoc(), XCRecording.getLat(), XCRecording.getLng(), XCRecording.getAlt(),
 						XCRecording.getQ(), XCRecording.getLength(), XCRecording.getTime(), XCRecording.getDate(),
-						XCRecording.getRmk(), XCRecording.getType(), "XC");
+						XCRecording.getRmk(), XCRecording.getType(), "XC",true);
 				session.merge(record);
 
 				for (String birdGenreSpecies : XCRecording.getAlso()) {
