@@ -152,8 +152,13 @@ public class Features {
 							.setParameter("recordId", recordId);
 					Record record = queryRecord.uniqueResult();
 					if (record != null) {
-						computeMLNormalizedFeature(jsonDirectory, featuresDirectory, recordId, record.getBird().getId(),
-								record.getDate(), record.getTime());
+						if (record.isEnabled()) {
+							computeMLNormalizedFeature(jsonDirectory, featuresDirectory, recordId,
+									record.getBird().getId(), record.getDate(), record.getTime());
+						} else {
+							logger.info("Record {} is disabled", recordId);
+						}
+
 					} else {
 						logger.error("Record not find in database :  {} ", recordId);
 					}
@@ -205,7 +210,7 @@ public class Features {
 			spreadSubsample.setInputFormat(train);
 			spreadSubsample.setRandomSeed(1);
 			train = Filter.useFilter(train, spreadSubsample);
-			
+
 			RotationForest rotationForest = new RotationForest();
 			rotationForest.setNumExecutionSlots(rotationForestNumExecutionSlots);
 			rotationForest.setMaxGroup(rotationForestMaxGroup);
@@ -221,7 +226,7 @@ public class Features {
 			RemoveMisclassified removeMisclassified = new RemoveMisclassified();
 			removeMisclassified.setClassifier(rotationForest);
 			removeMisclassified.setMaxIterations(1);
-			removeMisclassified.setThreshold(0.1);
+			removeMisclassified.setThreshold(0.2);
 			removeMisclassified.setClassIndex(-1);
 			removeMisclassified.setInputFormat(train);
 
