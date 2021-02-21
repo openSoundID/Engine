@@ -16,7 +16,7 @@ public class EngineConfiguration {
 
 	public EngineConfiguration() {
 
-		String propertiesFileName="engine.properties";
+		String propertiesFileName="opensoundid.properties";
 		Parameters params = new Parameters();
 		FileBasedConfigurationBuilder<FileBasedConfiguration> builder = new FileBasedConfigurationBuilder<FileBasedConfiguration>(
 				PropertiesConfiguration.class).configure(params.properties().setFileName(propertiesFileName));
