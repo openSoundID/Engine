@@ -32,8 +32,14 @@ public class Engine {
 		double[] aggregation = new double[resultat[0].length];
 
 		for (int i = 0; i < resultat.length; i++) {
+			double max=0;
 			for (int j = 0; j < resultat[i].length; j++) {
-				if(resultat[i][j]>threshold)
+				if(max<resultat[i][j])
+					max=resultat[i][j];				
+			}
+			for (int j = 0; j < resultat[i].length; j++) {
+
+				if((resultat[i][j]>threshold)&&(max==resultat[i][j]))
 				   aggregation[j] = aggregation[j] + resultat[i][j];				
 			}
 		}
