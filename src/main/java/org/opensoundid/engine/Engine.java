@@ -50,7 +50,7 @@ public class Engine {
 		}
 
 		for (int i = 0; i < aggregation.length; i++) {
-			if (aggregation[i] > stats.getPercentile(percentile)) {
+			if (aggregation[i] >= stats.getPercentile(percentile)) {
 				score.put(featuresSpecifications.findBirdId(i), Math.round(aggregation[i]));
 			}
 		}
