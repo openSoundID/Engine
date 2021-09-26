@@ -25,6 +25,7 @@ public class FeaturesSpecifications {
 	private int numberOfAttributes;
 
 	private ArrayList<Attribute> attributes;
+	private ArrayList<Attribute> CNNattributes;
 
 	public FeaturesSpecifications(EngineConfiguration engineConfiguration) {
 
@@ -32,7 +33,7 @@ public class FeaturesSpecifications {
 
 			numberOfAttributes = ((engineConfiguration.getInt("dsp.filterBankNumFilters")+1)*engineConfiguration.getInt("dsp.numFeatures"))+engineConfiguration.getInt("feature.numberOfMetadataFeatures")+1;
 			attributes = new ArrayList<>(numberOfAttributes);
-			
+			CNNattributes = new ArrayList<>(2);
 			File file = new File(engineConfiguration.getString("featuresSpecifications.yaml_data_file"));
 
 			// Instantiating a new ObjectMapper as a YAMLFactory
@@ -59,6 +60,8 @@ public class FeaturesSpecifications {
 		}
 
 		attributes.add(new Attribute("class", classValues));
+		CNNattributes.add(new Attribute("filename",true));
+		CNNattributes.add(new Attribute("class", classValues));
 
 	}
 
@@ -76,6 +79,10 @@ public class FeaturesSpecifications {
 
 	public List<Attribute> getAttributes() {
 		return attributes;
+	}
+	
+	public List<Attribute> getCNNAttributes() {
+		return CNNattributes;
 	}
 
 	public int findClassId(int birdID) {

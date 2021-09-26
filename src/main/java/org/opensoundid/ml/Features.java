@@ -105,34 +105,33 @@ public class Features {
 
 	}
 
-	public void saveMLStandardizedFeature(String fileName, List<double[]> normalizedFeatures, int birdID)
-			throws IOException {
+	public void saveCNNMLStandardizedFeature(String fileName, String recordId, List<double[]> normalizedFeatures,
+			int birdID) throws IOException {
 
-		Path path = Paths.get(fileName);
 		int classID = featureSpec.findClassId(birdID);
-		if (Files.exists(path)) {
 
-			logger.error("File {} already created. Delete it before", path);
-			System.exit(-1);
+		Instances dataRaw = new Instances("Training", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
+		dataRaw.setClassIndex(1);
 
-		}
+		for (int i = 0; i < normalizedFeatures.size(); i++) {
 
-		Instances dataRaw = new Instances("Training", (ArrayList<Attribute>) featureSpec.getAttributes(), 0);
-		dataRaw.setClassIndex(featureSpec.getNumOfAttributes());
+			double[] instanceValue = new double[2];
+			instanceValue[0] = dataRaw.attribute(0).addStringValue(recordId + "-" + Integer.toString(i) + ".png");
+			instanceValue[1] = classID;
 
-		for (double[] normalizedFeature : normalizedFeatures) {
-
-			double[] instanceValue = Arrays.copyOf(normalizedFeature, dataRaw.numAttributes());
-			instanceValue[featureSpec.getNumOfAttributes()] = classID;
 			dataRaw.add(new DenseInstance(1.0, instanceValue));
 
 		}
 
-		ArffSaver saver = new ArffSaver();
-		saver.setInstances(dataRaw);
-		saver.setFile(new File(fileName));
+		if (!dataRaw.isEmpty()) {
 
-		saver.writeBatch();
+			ArffSaver saver = new ArffSaver();
+			saver.setInstances(dataRaw);
+			saver.setFile(new File(fileName));
+
+			saver.writeBatch();
+
+		}
 
 	}
 
@@ -261,6 +260,53 @@ public class Features {
 
 	}
 
+	void concateAllCNNArffFilesForTraining() {
+
+		Instances dataRaw = new Instances("CNN Training", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
+		dataRaw.setClassIndex(1);
+
+		List<File> arffFiles;
+
+		try (Stream<Path> walk = Files.walk(Paths.get(featuresDirectory))) {
+			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
+					.collect(Collectors.toList());
+
+			ArffLoader loader = new ArffLoader();
+			for (File arffFile : arffFiles) {
+				logger.info(arffFile.getName());
+				loader.setFile(arffFile);
+				Instances fileDataRaw = loader.getDataSet();
+				logger.info("nombre instances lues {}", fileDataRaw.numInstances());
+				for (int i = 0; i < fileDataRaw.numInstances(); i++) {
+					double[] instanceValue = new double[2];
+	
+					
+					instanceValue[0] = dataRaw.attribute(0).addStringValue(fileDataRaw.instance(i).stringValue(0));
+					logger.info(fileDataRaw.instance(i).stringValue(0));
+					instanceValue[1] = fileDataRaw.instance(i).value(1);
+					
+					dataRaw.add(new DenseInstance(1.0, instanceValue));
+				}
+				logger.info("nombre instances dans dataraw: {}", dataRaw.numInstances());
+				loader.reset();
+
+			}
+
+			ArffSaver saver = new ArffSaver();
+
+			// dataRaw.randomize(new java.util.Random(0));
+
+			saver.setInstances(dataRaw);
+			saver.setFile(new File(arffTrainingFiles));
+			saver.writeBatch();
+
+		} catch (Exception e) {
+
+			logger.error(e.getMessage(), e);
+		}
+
+	}
+
 	void concateAllArffFilesForTestDataset(String featuresDirectory) {
 
 		Instances dataRaw = new Instances("Test", (ArrayList<Attribute>) featureSpec.getAttributes(), 0);
@@ -362,11 +408,12 @@ public class Features {
 
 	}
 
-	public List<double[]> computeMLFeatures(double[] peakdetectPositions, double[] peakdetectAmplitudes, int chunkIDs[],
-			double[][] features, double[] energy, String date, String time) {
+	public List<double[]> computeMLFeatures(String recordId, double[] peakdetectPositions,
+			double[] peakdetectAmplitudes, int chunkIDs[], double[][] features, double[] energy, String date,
+			String time) {
 
-		List<double[]> normalizedFeatures = dsp.processMelSpectra(chunkIDs, features, energy, peakdetectPositions,
-				peakdetectAmplitudes);
+		List<double[]> normalizedFeatures = dsp.processMelSpectra(recordId, chunkIDs, features, energy,
+				peakdetectPositions, peakdetectAmplitudes);
 		addMetaData(normalizedFeatures, date, time);
 
 		return normalizedFeatures;
@@ -400,8 +447,8 @@ public class Features {
 
 			if ((features != null) && (energy != null) && (chunkIDs != null) && (peakdetectPositions != null)
 					&& (peakdetectAmplitudes != null)) {
-				List<double[]> normalizedFeatures = computeMLFeatures(peakdetectPositions, peakdetectAmplitudes,
-						chunkIDs, features, energy, date, time);
+				List<double[]> normalizedFeatures = computeMLFeatures(recordId, peakdetectPositions,
+						peakdetectAmplitudes, chunkIDs, features, energy, date, time);
 
 				// Directory creation
 				Path path = Paths.get(featuresDirectory);
@@ -411,7 +458,9 @@ public class Features {
 
 				}
 
-				saveMLStandardizedFeature(path + "/" + recordId + ".arff", normalizedFeatures, birdID);
+
+				saveCNNMLStandardizedFeature(path + "/" + recordId + ".arff", recordId,
+						normalizedFeatures, birdID);
 			}
 
 		} catch (Exception ex) {
@@ -435,6 +484,7 @@ public class Features {
 					engineConfiguration.getString("features.alsoFeaturesDirectory"));
 			features.computeAllFeatures(engineConfiguration.getString("features.jsonDirectory"),
 					engineConfiguration.getString("features.featuresDirectory"));
+			features.concateAllCNNArffFilesForTraining();
 			features.concateAllArffFilesForTraining();
 			features.concateAllArffFilesForTestDataset(engineConfiguration.getString("features.alsoFeaturesDirectory"));
 

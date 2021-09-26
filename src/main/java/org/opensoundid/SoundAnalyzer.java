@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import org.apache.commons.io.FilenameUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensoundid.configuration.EngineConfiguration;
@@ -67,7 +68,7 @@ public class SoundAnalyzer {
 
 		List<double[]> normalizedFeatures = ((features != null) && (energy != null) && (chunkIDs != null)
 				&& (peakdetectPositions != null) && (peakdetectAmplitudes != null))
-						? mlFeatures.computeMLFeatures(peakdetectPositions, peakdetectAmplitudes, chunkIDs, features,
+						? mlFeatures.computeMLFeatures(FilenameUtils.getBaseName(jsonFilePath),peakdetectPositions, peakdetectAmplitudes, chunkIDs, features,
 								energy, date, time)
 						: new ArrayList<>();
 

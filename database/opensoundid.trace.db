@@ -1,0 +1,12 @@
+2021-05-01 10:56:38 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "BIRD" non trouvée
+Table "BIRD" not found; SQL statement:
+select bird0_.id as id1_1_, bird0_.en as en2_1_, bird0_.fr as fr3_1_, bird0_.gen as gen4_1_, bird0_.sp as sp5_1_, bird0_.ssp as ssp6_1_ from Bird bird0_ [42102-200]
+2021-05-01 11:03:27 jdbc[4]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "BIRD" non trouvée
+Table "BIRD" not found; SQL statement:
+select bird0_.id as id1_1_, bird0_.en as en2_1_, bird0_.fr as fr3_1_, bird0_.gen as gen4_1_, bird0_.sp as sp5_1_, bird0_.ssp as ssp6_1_ from Bird bird0_ [42102-200]
+2021-05-01 11:05:42 jdbc[5]: exception
+org.h2.jdbc.JdbcSQLSyntaxErrorException: Table "BIRD" non trouvée
+Table "BIRD" not found; SQL statement:
+select bird0_.id as id1_1_, bird0_.en as en2_1_, bird0_.fr as fr3_1_, bird0_.gen as gen4_1_, bird0_.sp as sp5_1_, bird0_.ssp as ssp6_1_ from Bird bird0_ [42102-200]

@@ -101,7 +101,7 @@ public class Inventory {
 	private boolean isRecordExcluded(Record record) {
 
 		for (String excludedKeyword : excludedKeywords) {
-			if (record.getType().contains(excludedKeyword))
+			if (record.getType().toLowerCase().contains(excludedKeyword.toLowerCase()))
 				return true;
 		}
 

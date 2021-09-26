@@ -9,6 +9,7 @@ import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensoundid.configuration.EngineConfiguration;
+import org.opensoundid.image.Spectogram;
 
 public class DSP {
 
@@ -48,7 +49,7 @@ public class DSP {
 	 *         features. Each row holds 1 delta feature vector.
 	 */
 
-	public List<double[]> pooling(List<double[][]> featuresList, double[] peakdetectPositions,
+	public List<double[]> pooling(String recordId,List<double[][]> featuresList, double[] peakdetectPositions,
 			double[] peakdetectAmplitudes) {
 
 		DescriptiveStatistics[] stats = new DescriptiveStatistics[filterBankNumFilters + 1];
@@ -56,6 +57,7 @@ public class DSP {
 			stats[k] = new DescriptiveStatistics();
 		List<double[]> pooledFeatures = new ArrayList<>();
 		int currentAggSize = 0;
+		int numImage =0;
 
 		DescriptiveStatistics stat = new DescriptiveStatistics();
 		for (double peakdetectAmplitude : peakdetectAmplitudes)
@@ -67,12 +69,14 @@ public class DSP {
 
 			if ((peakdetectAmplitudes[i] >= percentile) || (peakdetectAmplitudes.length < peakMinSequences)) {
 
-				int indice = optimizeIndice(44 / 2 - 1, featuresList.get(i), deltaOptimizePeakIndice);
+				int indice = optimizeIndice((2*deltaOptimizePeakIndice+maxAggSize) / 2 - 1, featuresList.get(i), deltaOptimizePeakIndice);
 				if ((indice + maxAggSize / 2) < featuresList.get(i).length) {
 					currentAggSize = 0;
 
 					int indiceMin = indice - (maxAggSize / 2) + 1;
 					int indiceMax = indice + (maxAggSize / 2);
+					
+					Spectogram.toImage(featuresList.get(i),indiceMin,indiceMax, recordId+"-"+Integer.toString(numImage++));
 
 					while ((featuresList.get(i)[indiceMin][0] == 0) && (indiceMin <= indice))
 						indiceMin++;
@@ -87,6 +91,7 @@ public class DSP {
 
 						}
 					}
+								
 
 					double[] pooledFeature = new double[8 * (filterBankNumFilters + 1) + 3];
 
@@ -172,7 +177,7 @@ public class DSP {
 
 	}
 
-	public List<double[]> processMelSpectra(int chunkIDs[], double[][] features, double[] energy,
+	public List<double[]> processMelSpectra(String recordId,int[] chunkIDs, double[][] features, double[] energy,
 			double[] peakdetectPositions, double[] peakdetectAmplitudes) {
 
 		double[][] concatFeat = new double[features.length][filterBankNumFilters + 1];
@@ -211,9 +216,10 @@ public class DSP {
 
 			j += chunkLength[i];
 			chunkedFeatures.add(chunk);
+			
 		}
 
-		return pooling(melSpectraNormalisation(chunkedFeatures), peakdetectPositions, peakdetectAmplitudes);
+		return pooling(recordId,melSpectraNormalisation(chunkedFeatures), peakdetectPositions, peakdetectAmplitudes);
 
 	}
 
