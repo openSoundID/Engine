@@ -2,3 +2,5 @@
 /export/
 *.jar
 *.class
+/database/
+/logs/
