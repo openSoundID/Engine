@@ -1,66 +1,288 @@
 package org.opensoundid.ml;
 
-import java.io.FileReader;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Random;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import org.apache.commons.cli.CommandLine;
+import org.apache.commons.cli.CommandLineParser;
+import org.apache.commons.cli.DefaultParser;
+import org.apache.commons.cli.HelpFormatter;
+import org.apache.commons.cli.Option;
+import org.apache.commons.cli.Options;
+import org.apache.commons.cli.ParseException;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.datavec.api.split.CollectionInputSplit;
+import org.datavec.image.recordreader.ImageRecordReader;
+import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
+import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.nd4j.evaluation.classification.Evaluation;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
+import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
+import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
+import org.opensoundid.configuration.EngineConfiguration;
 
-import weka.classifiers.AbstractClassifier;
-import weka.classifiers.Evaluation;
 import weka.core.Instances;
 
-public class CNNClassification {
-	private static final Logger logger = LoggerFactory.getLogger(CNNClassification.class);
+import weka.core.converters.ArffLoader;
 
-	public static void main(String[] args) {
+public class CNNClassification {
+
+	private static final Logger logger = LogManager.getLogger(CNNClassification.class);
+
+	private ComputationGraph computationGraph;
+
+	private String modelFileName;
+	private String spectrogramsDirectory;
+	private int batchSize;
+
+	public CNNClassification() {
 
 		try {
-			
-			logger.info("start classification");
-			Instant start = Instant.now();
 
-//Load all packages so that Dl4jMlpClassifier class can be found using forName("weka.filters.unsupervised.attribute.Dl4jMlpClassifier")
-			weka.core.WekaPackageManager.loadPackages(true);
+			EngineConfiguration engineConfiguration = new EngineConfiguration();
+			modelFileName = engineConfiguration.getString("CNNClassification.modelFileName");
+			batchSize = engineConfiguration.getInt("CNNClassification.batchSize");
+			spectrogramsDirectory = engineConfiguration.getString("CNNClassification.spectrogramsDirectory");
 
-//Load the dataset
-			weka.core.Instances data = new weka.core.Instances(new FileReader("/home/opensoundid/dataset/results/training.arff"));
-			data.setClassIndex(data.numAttributes() - 1);
-			String[] classifierOptions = weka.core.Utils.splitOptions("-S 1 -cache-mode FILESYSTEM -early-stopping \"weka.dl4j.earlystopping.EarlyStopping -maxEpochsNoImprovement 0 -valPercentage 0.0\" -normalization \"Standardize training data\" -iterator \"weka.dl4j.iterators.instance.ImageInstanceIterator -channelsLast false -height 299 -imagesLocation /home/opensoundid/Spectograms -numChannels 3 -width 299 -bs 16\" -iteration-listener \"weka.dl4j.listener.EpochListener -eval true -n 1\" -layer \"weka.dl4j.layers.OutputLayer -lossFn \\\"weka.dl4j.lossfunctions.LossMCXENT \\\" -nOut 2 -activation \\\"weka.dl4j.activations.ActivationSoftmax \\\" -name \\\"Output layer\\\"\" -logConfig \"weka.core.LogConfiguration -append true -dl4jLogLevel WARN -logFile /home/opensoundid/wekafiles/wekaDeeplearning4j.log -nd4jLogLevel INFO -wekaDl4jLogLevel INFO\" -config \"weka.dl4j.NeuralNetConfiguration -biasInit 0.0 -biasUpdater \\\"weka.dl4j.updater.Sgd -lr 0.001 -lrSchedule \\\\\\\"weka.dl4j.schedules.ConstantSchedule -scheduleType EPOCH\\\\\\\"\\\" -dist \\\"weka.dl4j.distribution.Disabled \\\" -dropout \\\"weka.dl4j.dropout.Disabled \\\" -gradientNormalization None -gradNormThreshold 1.0 -l1 NaN -l2 NaN -minimize -algorithm STOCHASTIC_GRADIENT_DESCENT -updater \\\"weka.dl4j.updater.Adam -beta1MeanDecay 0.9 -beta2VarDecay 0.999 -epsilon 1.0E-8 -lr 0.001 -lrSchedule \\\\\\\"weka.dl4j.schedules.ConstantSchedule -scheduleType EPOCH\\\\\\\"\\\" -weightInit XAVIER -weightNoise \\\"weka.dl4j.weightnoise.Disabled \\\"\" -numEpochs 10 -numGPUs 1 -averagingFrequency 10 -prefetchSize 24 -queueSize 0 -zooModel \"weka.dl4j.zoo.Dl4jXception -channelsLast false -pretrained IMAGENET\"");
-			weka.classifiers.AbstractClassifier myClassifier = (AbstractClassifier) weka.core.Utils.forName(
-					weka.classifiers.AbstractClassifier.class, "weka.classifiers.functions.Dl4jMlpClassifier",
-					classifierOptions);
+			File modelLocation = new File(modelFileName);
+			logger.info("Loading computationGraph model: {}", modelFileName);
+			computationGraph = ComputationGraph.load(modelLocation, false);
 
-			// Stratify and split the data
-			Random rand = new Random(0);
-			data.randomize(rand);
-						
-			int trainSize = (int) Math.round(data.numInstances() * (100.0 - 5.0) / 100.0);
-			int testSize = data.numInstances() - trainSize;
-
-			Instances train = new Instances(data, 0, trainSize);
-			Instances test = new Instances(data, trainSize, testSize);
-
-//Build the classifier on the training data
-			myClassifier.buildClassifier(train);
-
-//Evaluate the model on test data
-			Evaluation eval = new Evaluation(test);
-			eval.evaluateModel(myClassifier, test);
-
-//Output some summary statistics
-			System.out.println(eval.toSummaryString());
-			System.out.println(eval.toMatrixString());
-			
-			Instant end = Instant.now();
-			logger.info("classification process takes:{}",Duration.between(start, end));
-			logger.info("End classification");
-			
 		} catch (Exception ex) {
 			logger.error(ex.getMessage(), ex);
 
 		}
+
 	}
+
+	protected ImageRecordReader getImageRecordReader(Instances data) throws IOException {
+
+		ArffMetaDataLabelGenerator labelGenerator = new ArffMetaDataLabelGenerator(data,
+				spectrogramsDirectory);
+		ImageRecordReader reader = new ImageRecordReader(299, 299, 3, labelGenerator);
+		CollectionInputSplit cis = new CollectionInputSplit(labelGenerator.getPathURIs());
+		reader.initialize(cis);
+
+		return reader;
+	}
+
+	public double[][] distributionsForInstances(Instances instances) throws Exception {
+
+		// Get predictions
+
+		ImageRecordReader imageRecordReader = getImageRecordReader(instances);
+
+		DataSetIterator dataSetIterator = new RecordReaderDataSetIterator(imageRecordReader, batchSize, 1,
+				instances.numClasses());
+
+		DataNormalization scaler = new ImagePreProcessingScaler(0, 1);
+		scaler.fit(dataSetIterator);
+
+		dataSetIterator.setPreProcessor(scaler);
+
+		double[][] predictions = new double[instances.numInstances()][instances.numClasses()];
+
+		int offset = 0;
+		boolean next = dataSetIterator.hasNext();
+
+		// Get predictions batch-wise
+		while (next) {
+			INDArray predBatch;
+			predBatch = computationGraph.outputSingle(dataSetIterator.next().getFeatures());
+
+			int currentBatchSize = (int) predBatch.shape()[0];
+
+			// Build weka distribution output
+			for (int i = 0; i < currentBatchSize; i++) {
+				for (int j = 0; j < instances.numClasses(); j++) {
+					predictions[i + offset][j] = predBatch.getDouble(i, j);
+				}
+			}
+			offset += currentBatchSize; // add batchsize as offset
+			boolean hasInstancesLeft = offset < instances.numInstances();
+			next = dataSetIterator.hasNext() || hasInstancesLeft;
+		}
+
+		// Normalize prediction
+		for (int i = 0; i < predictions.length; i++) {
+			// only normalise if we're dealing with classification
+			weka.core.Utils.normalize(predictions[i]);
+		}
+		return predictions;
+	}
+
+	public double[][] evaluate(Instances instances) {
+
+		double[][] resultat = null;
+
+		try {
+
+			int numTestInstances = instances.numInstances();
+			logger.info("There are {} instances to evaluate", numTestInstances);
+
+			resultat = distributionsForInstances(instances);
+
+		} catch (Exception ex) {
+
+			logger.error(ex.getMessage(), ex);
+		}
+
+		return resultat;
+
+	}
+
+	public double[] evaluateScore(Instances instances) {
+
+		double[] resultat = new double[instances.numClasses()];
+		double[] score = new double[instances.numClasses()];
+		double[] returnScore = new double[2];
+
+		try {
+
+			int numInstances = instances.numInstances();
+			logger.info("There are {} test instances", numInstances);
+
+			double[][] predictionDistribution = distributionsForInstances(instances);
+
+			// Loop over each test instance.
+			for (int i = 0; i < numInstances; i++) {
+
+				// Get the prediction probability distribution.
+
+				for (int j = 0; j < instances.numClasses(); j++) {
+
+					resultat[j] = resultat[j] + predictionDistribution[i][j];
+
+				}
+
+			}
+
+			double total = Arrays.stream(resultat).sum();
+			for (int i = 0; i < score.length; i++) {
+				score[i] = resultat[i] / total;
+			}
+			returnScore[0] = score[(int) instances.instance(0).classValue()];
+			returnScore[1] = Arrays.stream(score).max().orElse(-1);
+
+		} catch (Exception ex) {
+
+			logger.error(ex.getMessage(), ex);
+		}
+
+		return returnScore;
+
+	}
+
+	public Evaluation predict(Instances instances) {
+
+		Evaluation eval = null;
+
+		try {
+
+			ImageRecordReader reader = getImageRecordReader(instances);
+			DataSetIterator iterator = new RecordReaderDataSetIterator(reader, batchSize, 1, instances.numClasses());
+
+			DataNormalization scaler = new ImagePreProcessingScaler(0, 1);
+			scaler.fit(iterator);
+			iterator.setPreProcessor(scaler);
+
+			eval = computationGraph.evaluate(iterator);
+
+		} catch (Exception ex) {
+
+			logger.error(ex.getMessage(), ex);
+		}
+
+		return eval;
+
+	}
+
+	public static void main(String[] args) {
+
+		logger.info("start CNN classification");
+		Instant start = Instant.now();
+		CommandLineParser parser = new DefaultParser();
+
+		Options options = new Options();
+		options.addOption(Option.builder("arffTestDirectory").longOpt("arffTestDirectory").desc("Arff Test Directory")
+				.required().hasArg().argName("File Name").build());
+
+		String arffTestDirectory = "arffTestDirectory";
+
+		try {
+			// parse the command line arguments
+			CommandLine line = parser.parse(options, args);
+
+			// validate that arguments has been set
+			if (line.hasOption("arffTestDirectory")) {
+
+				arffTestDirectory = line.getOptionValue("arffTestDirectory");
+
+			} else {
+				HelpFormatter formatter = new HelpFormatter();
+				formatter.printHelp("CNN classification", options);
+				System.exit(-1);
+
+			}
+
+		} catch (ParseException exp) {
+			logger.error("Unexpected exception:", exp);
+		}
+
+		List<File> arffFiles;
+		try (Stream<Path> walk = Files.walk(Paths.get(arffTestDirectory))) {
+			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
+					.sorted(Comparator.comparing(File::getName)).collect(Collectors.toList());
+
+			CNNClassification classification = new CNNClassification();
+
+			Map<String, Evaluation> resultats = new HashMap<>();
+
+			for (File arffFile : arffFiles) {
+
+				ArffLoader loader = new ArffLoader();
+				loader.setSource(arffFile);
+				Instances evaluation = loader.getDataSet();
+				evaluation.setClassIndex(evaluation.numAttributes() - 1);
+
+				if (evaluation.numInstances() > 0) {
+
+					Evaluation resultat = classification.predict(evaluation);
+
+					resultats.put(arffFile.getName(), resultat);
+					logger.info(arffFile.getName());
+					logger.info(resultat.stats());
+
+				} else {
+					logger.info("number of instance ==0: file {}", arffFile.getName());
+
+				}
+
+			}
+
+		} catch (Exception e) {
+
+			logger.error("Unexpected exception:", e);
+		}
+
+		Instant end = Instant.now();
+		logger.info("classification process takes:{}", Duration.between(start, end));
+		logger.info("End CNN classification");
+
+	}
+
 }

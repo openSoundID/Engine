@@ -19,8 +19,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.opensoundid.configuration.EngineConfiguration;
 import org.opensoundid.engine.Engine;
-import org.opensoundid.ml.Classification;
-import org.opensoundid.ml.Features;
+import org.opensoundid.ml.CNNFeatures;
+import org.opensoundid.ml.CNNClassification;
 import org.opensoundid.model.impl.BirdObservation;
 import org.opensoundid.model.impl.FeaturesSpecifications;
 import org.opensoundid.model.impl.JsonLowLevelFeatures;
@@ -39,13 +39,13 @@ public class SoundAnalyzer {
 
 	Instances jsonFileToFeatures(String jsonFilePath) throws Exception {
 
-		Features mlFeatures = new Features(config);
+		CNNFeatures mlFeatures = new CNNFeatures();
 		SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
 		SimpleDateFormat timeFormatter = new SimpleDateFormat("hh:mm");
 		ObjectMapper objectMapper = new ObjectMapper();
 		File jsonFile = new File(jsonFilePath);
 
-		Instances dataRaw = new Instances("Sound Analyze", (ArrayList<Attribute>) featureSpec.getAttributes(), 0);
+		Instances dataRaw = new Instances("Sound Analyze", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
 
 		JsonLowLevelFeatures jsonLowLevelFeatures = objectMapper.readValue(jsonFile, JsonLowLevelFeatures.class);
 
@@ -66,19 +66,25 @@ public class SoundAnalyzer {
 				? jsonLowLevelFeatures.getDescription().getPeakdetect_amplitudes()[0]
 				: null;
 
-		List<double[]> normalizedFeatures = ((features != null) && (energy != null) && (chunkIDs != null)
+		int numFeatures = ((features != null) && (energy != null) && (chunkIDs != null)
 				&& (peakdetectPositions != null) && (peakdetectAmplitudes != null))
 						? mlFeatures.computeMLFeatures(FilenameUtils.getBaseName(jsonFilePath),peakdetectPositions, peakdetectAmplitudes, chunkIDs, features,
-								energy, date, time)
-						: new ArrayList<>();
+								energy)
+						: 0;
 
-		if (!normalizedFeatures.isEmpty()) {
+		if (numFeatures!=0) {
 
 			dataRaw.setClassIndex(featureSpec.getNumOfAttributes());
 
-			for (double[] normalizedFeature : normalizedFeatures) {
+			for (int i=0;i< numFeatures;i++) {
 
-				double[] instanceValue = Arrays.copyOf(normalizedFeature, dataRaw.numAttributes());
+				double[] instanceValue = new double[4];
+				instanceValue[0] = dataRaw.attribute(0).addStringValue(FilenameUtils.getBaseName(jsonFilePath) + "-" + Integer.toString(i) + ".png");
+				double[] dateTimeValue=mlFeatures.convertDateTime(date,time);
+				instanceValue[1] = dateTimeValue[0];
+				instanceValue[2] = dateTimeValue[1];
+				
+				
 				dataRaw.add(new DenseInstance(1.0, instanceValue));
 
 			}
@@ -89,7 +95,7 @@ public class SoundAnalyzer {
 
 	void analyze() {
 
-		Classification classification = new Classification();
+		CNNClassification classification = new CNNClassification();
 		String recordDirectory = config.getString("soundAnalyzer.recordDirectory");
 		Engine engine = new Engine(config);
 		ScoreAnalyzer scoreAnalyzer = new ScoreAnalyzer();

@@ -41,11 +41,11 @@ public class TrainingOptimization {
 		FeaturesSpecifications featureSpec = new FeaturesSpecifications(config);
 		
 		//DATASET TRAINING
-		Instances trainingDataSet = new Instances("Training", (ArrayList<Attribute>) featureSpec.getAttributes(), 0);
+		Instances trainingDataSet = new Instances("Training", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
 		trainingDataSet.setClassIndex(trainingDataSet.numAttributes() - 1);
 
 		//DATASET TEST
-		Instances testDataSet = new Instances("Test", (ArrayList<Attribute>) featureSpec.getAttributes(), 0);
+		Instances testDataSet = new Instances("Test", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
 		testDataSet.setClassIndex(trainingDataSet.numAttributes() - 1);
 		
 

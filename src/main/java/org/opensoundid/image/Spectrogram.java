@@ -7,9 +7,9 @@ import org.openimaj.image.ImageUtilities;
 import org.openimaj.image.MBFImage;
 
 
-public class Spectogram {
+public class Spectrogram {
 	
-public static void toImage(double[][] features,int indiceMin,int indiceMax,String name) {
+public static void toImage(double[][] features,int indiceMin,int indiceMax,String name,String spectrogramsImagePath) {
 
 			// Load the image
 			MBFImage image = new MBFImage( 299,299,3);
@@ -25,7 +25,7 @@ public static void toImage(double[][] features,int indiceMin,int indiceMax,Strin
 			
 			
 			try {
-				ImageUtilities.write(image,"png", new File("/home/opensoundid/Spectograms/"+name+".png"));
+				ImageUtilities.write(image,"png", new File(spectrogramsImagePath+"/"+name+".png"));
 			} catch (IOException e) {
 
 				e.printStackTrace();

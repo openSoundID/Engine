@@ -24,16 +24,13 @@ public class FeaturesSpecifications {
 	private Map<Integer, String> idToBirdFrenchName = new TreeMap<>();
 	private int numberOfAttributes;
 
-	private ArrayList<Attribute> attributes;
-	private ArrayList<Attribute> CNNattributes;
+	private ArrayList<Attribute> cnnAttributes;
 
 	public FeaturesSpecifications(EngineConfiguration engineConfiguration) {
 
 		try {
 
-			numberOfAttributes = ((engineConfiguration.getInt("dsp.filterBankNumFilters")+1)*engineConfiguration.getInt("dsp.numFeatures"))+engineConfiguration.getInt("feature.numberOfMetadataFeatures")+1;
-			attributes = new ArrayList<>(numberOfAttributes);
-			CNNattributes = new ArrayList<>(2);
+			cnnAttributes = new ArrayList<>(4);
 			File file = new File(engineConfiguration.getString("featuresSpecifications.yaml_data_file"));
 
 			// Instantiating a new ObjectMapper as a YAMLFactory
@@ -54,14 +51,11 @@ public class FeaturesSpecifications {
 
 		// Access the first element of the list and print it as well
 
-		for (int i = 0; i < numberOfAttributes; i++) {
-			String attributeName = "F" + Integer.toString(i);
-			attributes.add(new Attribute(attributeName));
-		}
 
-		attributes.add(new Attribute("class", classValues));
-		CNNattributes.add(new Attribute("filename",true));
-		CNNattributes.add(new Attribute("class", classValues));
+		cnnAttributes.add(new Attribute("filename",true));
+		cnnAttributes.add(new Attribute("date"));
+		cnnAttributes.add(new Attribute("time"));
+		cnnAttributes.add(new Attribute("class", classValues));
 
 	}
 
@@ -77,12 +71,9 @@ public class FeaturesSpecifications {
 		return classValues;
 	}
 
-	public List<Attribute> getAttributes() {
-		return attributes;
-	}
 	
 	public List<Attribute> getCNNAttributes() {
-		return CNNattributes;
+		return cnnAttributes;
 	}
 
 	public int findClassId(int birdID) {

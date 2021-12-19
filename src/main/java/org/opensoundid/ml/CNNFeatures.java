@@ -10,93 +10,71 @@ import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.apache.commons.math3.stat.descriptive.DescriptiveStatistics;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
 import org.hibernate.Session;
 import org.hibernate.query.Query;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import org.opensoundid.configuration.EngineConfiguration;
-import java.util.Calendar;
 import org.opensoundid.dsp.DSP;
-import java.util.GregorianCalendar;
 import org.opensoundid.jpa.JpaUtil;
 import org.opensoundid.jpa.entity.Record;
 import org.opensoundid.model.impl.FeaturesSpecifications;
 import org.opensoundid.model.impl.JsonLowLevelFeatures;
 
-import weka.classifiers.meta.RotationForest;
-import weka.classifiers.trees.J48;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import weka.core.Attribute;
 import weka.core.DenseInstance;
 import weka.core.Instances;
 import weka.core.converters.ArffLoader;
 import weka.core.converters.ArffSaver;
 import weka.filters.Filter;
-import weka.filters.supervised.instance.ClassBalancer;
 import weka.filters.supervised.instance.SpreadSubsample;
-import weka.filters.unsupervised.attribute.PrincipalComponents;
-import weka.filters.unsupervised.instance.RemoveMisclassified;
 
-public class Features {
+public class CNNFeatures {
 
-	private static final Logger logger = LogManager.getLogger(Features.class);
+	private static final Logger logger = LogManager.getLogger(CNNFeatures.class);
 
+	private EngineConfiguration engineConfiguration = new EngineConfiguration();
 	private int featuresNumber;
 	private double trainingSizePct;
 	private String featuresDirectory;
 	private String arffTrainingFiles;
-	private String arffTestFiles;
-	private String subSampleArffTestFiles;
-	private int subSampleArffTestMaxCount;
 	private String arffTestAlsoFiles;
 	private String subSampleArffTestAlsoFiles;
+	private String arffTestFiles;
+	private String subSampleArffTestFiles;
 	private int subSampleArffTestAlsoMaxCount;
+	private int subSampleArffTestMaxCount;
 	private SpreadSubsample spreadSubsample;
-	private double spreadSubsampleFactor;
-	private int rotationForestNumExecutionSlots;
-	private int rotationForestMaxGroup;
-	private int rotationForestMinGroup;
-	private int rotationForestNumIterations;
-	private double principalComponentsVarianceCovered;
 
 	private DSP dsp;
 	private FeaturesSpecifications featureSpec;
 
-	public Features(EngineConfiguration config) {
+	public CNNFeatures() {
 
 		try {
-			dsp = new DSP(config);
-			featureSpec = new FeaturesSpecifications(config);
+			dsp = new DSP(engineConfiguration);
+			featureSpec = new FeaturesSpecifications(engineConfiguration);
 			spreadSubsample = new SpreadSubsample();
-			featuresNumber = config.getInt("features.featuresNumber");
-			trainingSizePct = config.getDouble("features.trainingSizePct");
-			featuresDirectory = config.getString("features.featuresDirectory");
-			arffTrainingFiles = config.getString("features.arffTrainingFiles");
-			arffTestFiles = config.getString("features.arffTestFiles");
-			subSampleArffTestFiles = config.getString("features.subSampleArffTestFiles");
-			subSampleArffTestMaxCount = config.getInt("features.subSampleArffTestMaxCount");
-			arffTestAlsoFiles = config.getString("features.arffTestAlsoFiles");
-			subSampleArffTestAlsoFiles = config.getString("features.subSampleArffTestAlsoFiles");
-			subSampleArffTestAlsoMaxCount = config.getInt("features.subSampleArffTestAlsoMaxCount");
-			spreadSubsampleFactor = config.getDouble("features.spreadSubsampleFactor");
-			rotationForestNumExecutionSlots = config
-					.getInt("features.removeMisclassified.rotationForest.NumExecutionSlots");
-			rotationForestMaxGroup = config.getInt("features.removeMisclassified.rotationForest.MaxGroup");
-			rotationForestMinGroup = config.getInt("features.removeMisclassified.rotationForest.MinGroup");
-			rotationForestNumIterations = config.getInt("features.removeMisclassified.rotationForest.NumIterations");
-			principalComponentsVarianceCovered = config
-					.getDouble("features.removeMisclassified.principalComponents.varianceCovered");
+			featuresNumber = engineConfiguration.getInt("CNNFeatures.featuresNumber");
+			trainingSizePct = engineConfiguration.getDouble("CNNFeatures.trainingSizePct");
+			featuresDirectory = engineConfiguration.getString("CNNFeatures.featuresDirectory");
+			arffTrainingFiles = engineConfiguration.getString("CNNFeatures.arffTrainingFiles");
+			arffTestAlsoFiles = engineConfiguration.getString("CNNFeatures.arffTestAlsoFiles");
+			subSampleArffTestAlsoFiles = engineConfiguration.getString("CNNFeatures.subSampleArffTestAlsoFiles");
+			arffTestFiles = engineConfiguration.getString("CNNFeatures.arffTestFiles");
+			subSampleArffTestMaxCount = engineConfiguration.getInt("CNNFeatures.subSampleArffTestMaxCount");
+			subSampleArffTestAlsoMaxCount = engineConfiguration.getInt("CNNFeatures.subSampleArffTestAlsoMaxCount");
+			subSampleArffTestFiles = engineConfiguration.getString("CNNFeatures.subSampleArffTestFiles");
 
 		} catch (Exception ex) {
 			logger.error(ex.getMessage(), ex);
@@ -105,19 +83,22 @@ public class Features {
 
 	}
 
-	public void saveCNNMLStandardizedFeature(String fileName, String recordId, List<double[]> normalizedFeatures,
-			int birdID) throws IOException {
+	public void saveCNNMLStandardizedFeature(String fileName, String recordId, int numSpectograms, int birdID,
+			String date, String time) throws IOException {
 
 		int classID = featureSpec.findClassId(birdID);
 
 		Instances dataRaw = new Instances("Training", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
-		dataRaw.setClassIndex(1);
+		dataRaw.setClassIndex(dataRaw.numAttributes() - 1);
 
-		for (int i = 0; i < normalizedFeatures.size(); i++) {
+		for (int i = 0; i < numSpectograms; i++) {
 
-			double[] instanceValue = new double[2];
+			double[] instanceValue = new double[4];
 			instanceValue[0] = dataRaw.attribute(0).addStringValue(recordId + "-" + Integer.toString(i) + ".png");
-			instanceValue[1] = classID;
+			double[] dateTimeValue = convertDateTime(date, time);
+			instanceValue[1] = dateTimeValue[0];
+			instanceValue[2] = dateTimeValue[1];
+			instanceValue[3] = classID;
 
 			dataRaw.add(new DenseInstance(1.0, instanceValue));
 
@@ -172,27 +153,37 @@ public class Features {
 
 	}
 
-	void concateAllArffFilesForTraining() {
+	void concateAllCNNArffFilesForTraining() {
 
-		Instances dataRaw = new Instances("Training", (ArrayList<Attribute>) featureSpec.getAttributes(), 0);
-		dataRaw.setClassIndex(featureSpec.getNumOfAttributes());
+		Instances dataRaw = new Instances("CNN Training", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
+		dataRaw.setClassIndex(dataRaw.numAttributes() - 1);
 
 		List<File> arffFiles;
 
 		try (Stream<Path> walk = Files.walk(Paths.get(featuresDirectory))) {
 			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
 					.collect(Collectors.toList());
+
 			ArffLoader loader = new ArffLoader();
-
 			for (File arffFile : arffFiles) {
-
+				logger.info(arffFile.getName());
 				loader.setFile(arffFile);
 				Instances fileDataRaw = loader.getDataSet();
-
+				logger.info("nombre instances lues {}", fileDataRaw.numInstances());
 				for (int i = 0; i < fileDataRaw.numInstances(); i++) {
-					dataRaw.add(fileDataRaw.instance(i));
+					double[] instanceValue = new double[4];
+
+					instanceValue[0] = dataRaw.attribute(0).addStringValue(fileDataRaw.instance(i).stringValue(0));
+
+					instanceValue[1] = fileDataRaw.instance(i).value(1);
+					instanceValue[2] = fileDataRaw.instance(i).value(2);
+					instanceValue[3] = fileDataRaw.instance(i).value(3);
+
+					dataRaw.add(new DenseInstance(1.0, instanceValue));
 				}
+				logger.info("nombre instances dans dataraw: {}", dataRaw.numInstances());
 				loader.reset();
+
 			}
 
 			ArffSaver saver = new ArffSaver();
@@ -204,32 +195,6 @@ public class Features {
 
 			Instances train = new Instances(dataRaw, 0, trainSize);
 			Instances test = new Instances(dataRaw, trainSize, testSize);
-
-			spreadSubsample.setMaxCount(featuresNumber * spreadSubsampleFactor);
-			spreadSubsample.setInputFormat(train);
-			spreadSubsample.setRandomSeed(1);
-			train = Filter.useFilter(train, spreadSubsample);
-
-			RotationForest rotationForest = new RotationForest();
-			rotationForest.setNumExecutionSlots(rotationForestNumExecutionSlots);
-			rotationForest.setMaxGroup(rotationForestMaxGroup);
-			rotationForest.setMinGroup(rotationForestMinGroup);
-			rotationForest.setNumIterations(rotationForestNumIterations);
-			J48 j48 = new J48();
-			rotationForest.setClassifier(j48);
-			PrincipalComponents principalComponents = new PrincipalComponents();
-			principalComponents.setVarianceCovered(principalComponentsVarianceCovered);
-			principalComponents.setMaximumAttributeNames(-1);
-			rotationForest.setProjectionFilter(principalComponents);
-
-			RemoveMisclassified removeMisclassified = new RemoveMisclassified();
-			removeMisclassified.setClassifier(rotationForest);
-			removeMisclassified.setMaxIterations(1);
-			removeMisclassified.setThreshold(0.2);
-			removeMisclassified.setClassIndex(-1);
-			removeMisclassified.setInputFormat(train);
-
-			train = Filter.useFilter(train, removeMisclassified);
 
 			spreadSubsample.setMaxCount(featuresNumber);
 			spreadSubsample.setInputFormat(train);
@@ -253,6 +218,10 @@ public class Features {
 			saver.setFile(new File(subSampleArffTestFiles));
 			saver.writeBatch();
 
+			saver.setInstances(dataRaw);
+			saver.setFile(new File(arffTrainingFiles));
+			saver.writeBatch();
+
 		} catch (Exception e) {
 
 			logger.error(e.getMessage(), e);
@@ -260,10 +229,10 @@ public class Features {
 
 	}
 
-	void concateAllCNNArffFilesForTraining() {
+	void concateAllCNNArffFilesForTestDataset(String featuresDirectory) {
 
-		Instances dataRaw = new Instances("CNN Training", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
-		dataRaw.setClassIndex(1);
+		Instances dataRaw = new Instances("CNN Test", (ArrayList<Attribute>) featureSpec.getCNNAttributes(), 0);
+		dataRaw.setClassIndex(dataRaw.numAttributes() - 1);
 
 		List<File> arffFiles;
 
@@ -278,57 +247,19 @@ public class Features {
 				Instances fileDataRaw = loader.getDataSet();
 				logger.info("nombre instances lues {}", fileDataRaw.numInstances());
 				for (int i = 0; i < fileDataRaw.numInstances(); i++) {
-					double[] instanceValue = new double[2];
-	
-					
+					double[] instanceValue = new double[4];
+
 					instanceValue[0] = dataRaw.attribute(0).addStringValue(fileDataRaw.instance(i).stringValue(0));
-					logger.info(fileDataRaw.instance(i).stringValue(0));
+
 					instanceValue[1] = fileDataRaw.instance(i).value(1);
-					
+					instanceValue[2] = fileDataRaw.instance(i).value(2);
+					instanceValue[3] = fileDataRaw.instance(i).value(3);
+
 					dataRaw.add(new DenseInstance(1.0, instanceValue));
 				}
 				logger.info("nombre instances dans dataraw: {}", dataRaw.numInstances());
 				loader.reset();
 
-			}
-
-			ArffSaver saver = new ArffSaver();
-
-			// dataRaw.randomize(new java.util.Random(0));
-
-			saver.setInstances(dataRaw);
-			saver.setFile(new File(arffTrainingFiles));
-			saver.writeBatch();
-
-		} catch (Exception e) {
-
-			logger.error(e.getMessage(), e);
-		}
-
-	}
-
-	void concateAllArffFilesForTestDataset(String featuresDirectory) {
-
-		Instances dataRaw = new Instances("Test", (ArrayList<Attribute>) featureSpec.getAttributes(), 0);
-		dataRaw.setClassIndex(featureSpec.getNumOfAttributes());
-
-		List<File> arffFiles;
-
-		try (Stream<Path> walk = Files.walk(Paths.get(featuresDirectory))) {
-			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
-					.collect(Collectors.toList());
-
-			ArffLoader loader = new ArffLoader();
-
-			for (File arffFile : arffFiles) {
-
-				loader.setFile(arffFile);
-				Instances fileDataRaw = loader.getDataSet();
-
-				for (int i = 0; i < fileDataRaw.numInstances(); i++) {
-					dataRaw.add(fileDataRaw.instance(i));
-				}
-				loader.reset();
 			}
 
 			ArffSaver saver = new ArffSaver();
@@ -355,9 +286,14 @@ public class Features {
 
 	}
 
-	void addMetaData(List<double[]> normalizedFeatures, String date, String time) {
+	/*
+	 * convert date and time to day of year and number of minute of day
+	 */
+	public double[] convertDateTime(String date, String time) {
 
+		double[] returnValue = new double[2];
 		DateFormat format;
+
 		Calendar calendar = new GregorianCalendar();
 		boolean parseError = false;
 
@@ -384,39 +320,30 @@ public class Features {
 			parseError = true;
 		}
 
-		for (double[] normalizedFeature : normalizedFeatures) {
-			int randday = 0;
-			int randminute = 0;
+		int randday = 0;
+		int randminute = 0;
 
-			randday = ThreadLocalRandom.current().nextInt(-5, 5);
-			randminute = ThreadLocalRandom.current().nextInt(-5, 5);
+		randday = ThreadLocalRandom.current().nextInt(-5, 5);
+		randminute = ThreadLocalRandom.current().nextInt(-5, 5);
 
-			normalizedFeature[normalizedFeature.length - 1] = !parseError ? randday + calendar.get(Calendar.DAY_OF_YEAR)
-					: Double.NaN;
-			normalizedFeature[normalizedFeature.length - 2] = !parseError && time.length() == 5
-					? calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE) + randminute
-					: Double.NaN;
-			if ((normalizedFeature[normalizedFeature.length - 1] != Double.NaN)
-					&& (normalizedFeature[normalizedFeature.length - 1] < 1))
-				normalizedFeature[normalizedFeature.length - 1] = 1;
+		returnValue[0] = !parseError ? randday + calendar.get(Calendar.DAY_OF_YEAR) : Double.NaN;
+		returnValue[1] = !parseError && time.length() == 5
+				? calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE) + randminute
+				: Double.NaN;
+		if ((returnValue[0] != Double.NaN) && (returnValue[0] < 1))
+			returnValue[0] = 1;
 
-			if ((normalizedFeature[normalizedFeature.length - 2] != Double.NaN)
-					&& (normalizedFeature[normalizedFeature.length - 2] < 1))
-				normalizedFeature[normalizedFeature.length - 2] = 1;
+		if ((returnValue[1] != Double.NaN) && (returnValue[1] < 1))
+			returnValue[1] = 1;
 
-		}
+		return returnValue;
 
 	}
 
-	public List<double[]> computeMLFeatures(String recordId, double[] peakdetectPositions,
-			double[] peakdetectAmplitudes, int chunkIDs[], double[][] features, double[] energy, String date,
-			String time) {
+	public int computeMLFeatures(String recordId, double[] peakdetectPositions, double[] peakdetectAmplitudes,
+			int chunkIDs[], double[][] features, double[] energy) {
 
-		List<double[]> normalizedFeatures = dsp.processMelSpectra(recordId, chunkIDs, features, energy,
-				peakdetectPositions, peakdetectAmplitudes);
-		addMetaData(normalizedFeatures, date, time);
-
-		return normalizedFeatures;
+		return dsp.processMelSpectra(recordId, chunkIDs, features, energy, peakdetectPositions, peakdetectAmplitudes);
 
 	}
 
@@ -447,8 +374,8 @@ public class Features {
 
 			if ((features != null) && (energy != null) && (chunkIDs != null) && (peakdetectPositions != null)
 					&& (peakdetectAmplitudes != null)) {
-				List<double[]> normalizedFeatures = computeMLFeatures(recordId, peakdetectPositions,
-						peakdetectAmplitudes, chunkIDs, features, energy, date, time);
+				int numSpectograms = computeMLFeatures(recordId, peakdetectPositions, peakdetectAmplitudes, chunkIDs,
+						features, energy);
 
 				// Directory creation
 				Path path = Paths.get(featuresDirectory);
@@ -458,9 +385,8 @@ public class Features {
 
 				}
 
-
-				saveCNNMLStandardizedFeature(path + "/" + recordId + ".arff", recordId,
-						normalizedFeatures, birdID);
+				saveCNNMLStandardizedFeature(path + "/" + recordId + ".arff", recordId, numSpectograms, birdID, date,
+						time);
 			}
 
 		} catch (Exception ex) {
@@ -472,21 +398,22 @@ public class Features {
 
 	public static void main(String[] args) {
 
-		logger.info("start Features Extraction");
+		logger.info("start CNN Features Extraction");
 		Instant start = Instant.now();
 
 		try {
 
 			EngineConfiguration engineConfiguration = new EngineConfiguration();
-			Features features = new Features(engineConfiguration);
+			CNNFeatures features = new CNNFeatures();
 
-			features.computeAllFeatures(engineConfiguration.getString("features.alsoJsonDirectory"),
-					engineConfiguration.getString("features.alsoFeaturesDirectory"));
-			features.computeAllFeatures(engineConfiguration.getString("features.jsonDirectory"),
-					engineConfiguration.getString("features.featuresDirectory"));
+			features.computeAllFeatures(engineConfiguration.getString("CNNFeatures.alsoJsonDirectory"),
+					engineConfiguration.getString("CNNFeatures.alsoFeaturesDirectory"));
+			features.computeAllFeatures(engineConfiguration.getString("CNNFeatures.jsonDirectory"),
+					engineConfiguration.getString("CNNFeatures.featuresDirectory"));
 			features.concateAllCNNArffFilesForTraining();
-			features.concateAllArffFilesForTraining();
-			features.concateAllArffFilesForTestDataset(engineConfiguration.getString("features.alsoFeaturesDirectory"));
+
+			features.concateAllCNNArffFilesForTestDataset(
+					engineConfiguration.getString("CNNFeatures.alsoFeaturesDirectory"));
 
 		} catch (Exception e) {
 
@@ -495,7 +422,7 @@ public class Features {
 
 		Instant end = Instant.now();
 		logger.info("Features extraction process takes:{}", Duration.between(start, end));
-		logger.info("End Features extraction");
+		logger.info("End CNN Features extraction");
 
 	}
 
