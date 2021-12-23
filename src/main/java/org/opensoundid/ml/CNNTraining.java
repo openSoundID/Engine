@@ -46,7 +46,7 @@ import weka.core.Instances;
 
 public class CNNTraining {
 	private static final Logger logger = LoggerFactory.getLogger(CNNTraining.class);
-	private String spectogramsDirectory;
+	private String spectrogramsDirectory;
 	private String arffTrainingFiles;
 	private String arffTestFiles;
 	private int randomSeed;
@@ -64,7 +64,7 @@ public class CNNTraining {
 		try {
 
 			EngineConfiguration engineConfiguration = new EngineConfiguration();
-			spectogramsDirectory = engineConfiguration.getString("CNNTraining.spectogramsDirectory");
+			spectrogramsDirectory = engineConfiguration.getString("CNNTraining.spectrogramsDirectory");
 			arffTrainingFiles = engineConfiguration.getString("CNNTraining.arffTrainingFiles");
 			arffTestFiles = engineConfiguration.getString("CNNTraining.arffTestFiles");
 			randomSeed = engineConfiguration.getInt("CNNTraining.randomSeed");
@@ -165,7 +165,7 @@ public class CNNTraining {
 
 	protected ImageRecordReader getImageRecordReader(Instances data) throws IOException {
 
-		ArffMetaDataLabelGenerator labelGenerator = new ArffMetaDataLabelGenerator(data, spectogramsDirectory);
+		ArffMetaDataLabelGenerator labelGenerator = new ArffMetaDataLabelGenerator(data, spectrogramsDirectory);
 		ImageRecordReader reader = new ImageRecordReader(299, 299, 3, labelGenerator);
 		CollectionInputSplit cis = new CollectionInputSplit(labelGenerator.getPathURIs());
 		reader.initialize(cis);
