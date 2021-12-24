@@ -173,8 +173,8 @@ public class CNNTraining {
 		return reader;
 	}
 
-	protected OutputLayer createOutputLayer() {
-		return new OutputLayer.Builder(LossFunctions.LossFunction.MCXENT).nIn(2048).nOut(2)
+	protected OutputLayer createOutputLayer(int numClasses) {
+		return new OutputLayer.Builder(LossFunctions.LossFunction.MCXENT).nIn(2048).nOut(numClasses)
 				.activation(Activation.SOFTMAX).build();
 	}
 
@@ -192,7 +192,7 @@ public class CNNTraining {
 				.fineTuneConfiguration(fineTuneConf).setFeatureExtractor("predictions")
 				.removeVertexKeepConnections("predictions")
 				.addLayer("intermediate_pooling", new GlobalPoolingLayer.Builder().build(), "avg_pool")
-				.addLayer("opensoundid_prediction", createOutputLayer(), "intermediate_pooling")
+				.addLayer("opensoundid_prediction", createOutputLayer(numClasses), "intermediate_pooling")
 				.setOutputs("opensoundid_prediction");
 
 		return graphBuilder.build();
