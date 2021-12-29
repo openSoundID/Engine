@@ -36,7 +36,6 @@ import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.opensoundid.configuration.EngineConfiguration;
 
 import weka.core.Instances;
-
 import weka.core.converters.ArffLoader;
 
 public class CNNClassification {
@@ -71,8 +70,7 @@ public class CNNClassification {
 
 	protected ImageRecordReader getImageRecordReader(Instances data) throws IOException {
 
-		ArffMetaDataLabelGenerator labelGenerator = new ArffMetaDataLabelGenerator(data,
-				spectrogramsDirectory);
+		ArffMetaDataLabelGenerator labelGenerator = new ArffMetaDataLabelGenerator(data, spectrogramsDirectory);
 		ImageRecordReader reader = new ImageRecordReader(299, 299, 3, labelGenerator);
 		CollectionInputSplit cis = new CollectionInputSplit(labelGenerator.getPathURIs());
 		reader.initialize(cis);
@@ -80,7 +78,7 @@ public class CNNClassification {
 		return reader;
 	}
 
-	public double[][] distributionsForInstances(Instances instances) throws Exception {
+	public double[][] distributionsForInstances(Instances instances) throws IOException {
 
 		// Get predictions
 
@@ -277,11 +275,13 @@ public class CNNClassification {
 		} catch (Exception e) {
 
 			logger.error("Unexpected exception:", e);
+			System.exit(-1);
 		}
 
 		Instant end = Instant.now();
 		logger.info("classification process takes:{}", Duration.between(start, end));
 		logger.info("End CNN classification");
+		System.exit(0);
 
 	}
 

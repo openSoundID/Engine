@@ -111,6 +111,7 @@ public class CNNFeatures {
 			saver.setFile(new File(fileName));
 
 			saver.writeBatch();
+			
 
 		}
 
@@ -169,7 +170,7 @@ public class CNNFeatures {
 				logger.info(arffFile.getName());
 				loader.setFile(arffFile);
 				Instances fileDataRaw = loader.getDataSet();
-				logger.info("nombre instances lues {}", fileDataRaw.numInstances());
+				
 				for (int i = 0; i < fileDataRaw.numInstances(); i++) {
 					double[] instanceValue = new double[4];
 
@@ -181,7 +182,6 @@ public class CNNFeatures {
 
 					dataRaw.add(new DenseInstance(1.0, instanceValue));
 				}
-				logger.info("nombre instances dans dataraw: {}", dataRaw.numInstances());
 				loader.reset();
 
 			}
@@ -341,7 +341,7 @@ public class CNNFeatures {
 	}
 
 	public int computeMLFeatures(String recordId, double[] peakdetectPositions, double[] peakdetectAmplitudes,
-			int chunkIDs[], double[][] features, double[] energy) {
+			int[] chunkIDs, double[][] features, double[] energy) {
 
 		return dsp.processMelSpectra(recordId, chunkIDs, features, energy, peakdetectPositions, peakdetectAmplitudes);
 
