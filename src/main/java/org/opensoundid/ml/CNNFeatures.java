@@ -111,7 +111,6 @@ public class CNNFeatures {
 			saver.setFile(new File(fileName));
 
 			saver.writeBatch();
-			
 
 		}
 
@@ -127,7 +126,7 @@ public class CNNFeatures {
 			for (File jsonFile : jsonFiles) {
 				String recordId = jsonFile.getName().split("\\.json")[0];
 				logger.info("Record id {}", recordId);
-				File featuresFile = new File(featuresDirectory + "/" + recordId + ".arff");
+				File featuresFile = new File(featuresDirectory + "/" + recordId + ".arff.gz");
 				if (!featuresFile.exists() && (jsonFile.length() != 0)) {
 					Query<Record> queryRecord = session.createNamedQuery("Record.findByRecordId", Record.class)
 							.setParameter("recordId", recordId);
@@ -162,15 +161,14 @@ public class CNNFeatures {
 		List<File> arffFiles;
 
 		try (Stream<Path> walk = Files.walk(Paths.get(featuresDirectory))) {
-			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
+			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff.gz")).map(Path::toFile)
 					.collect(Collectors.toList());
 
-			
 			for (File arffFile : arffFiles) {
 				ArffLoader loader = new ArffLoader();
 				loader.setFile(arffFile);
 				Instances fileDataRaw = loader.getDataSet();
-				
+
 				for (int i = 0; i < fileDataRaw.numInstances(); i++) {
 					double[] instanceValue = new double[4];
 
@@ -182,7 +180,6 @@ public class CNNFeatures {
 
 					dataRaw.add(new DenseInstance(1.0, instanceValue));
 				}
-				loader.reset();
 
 			}
 
@@ -237,10 +234,9 @@ public class CNNFeatures {
 		List<File> arffFiles;
 
 		try (Stream<Path> walk = Files.walk(Paths.get(featuresDirectory))) {
-			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
+			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff.gz")).map(Path::toFile)
 					.collect(Collectors.toList());
 
-			
 			for (File arffFile : arffFiles) {
 				ArffLoader loader = new ArffLoader();
 				loader.setFile(arffFile);
@@ -256,8 +252,6 @@ public class CNNFeatures {
 
 					dataRaw.add(new DenseInstance(1.0, instanceValue));
 				}
-							
-				loader.reset();
 
 			}
 
@@ -384,7 +378,7 @@ public class CNNFeatures {
 
 				}
 
-				saveCNNMLStandardizedFeature(path + "/" + recordId + ".arff", recordId, numSpectograms, birdID, date,
+				saveCNNMLStandardizedFeature(path + "/" + recordId + ".arff.gz", recordId, numSpectograms, birdID, date,
 						time);
 			}
 
