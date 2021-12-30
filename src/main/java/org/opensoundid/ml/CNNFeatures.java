@@ -165,9 +165,9 @@ public class CNNFeatures {
 			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
 					.collect(Collectors.toList());
 
-			ArffLoader loader = new ArffLoader();
+			
 			for (File arffFile : arffFiles) {
-				logger.info(arffFile.getName());
+				ArffLoader loader = new ArffLoader();
 				loader.setFile(arffFile);
 				Instances fileDataRaw = loader.getDataSet();
 				
@@ -240,12 +240,11 @@ public class CNNFeatures {
 			arffFiles = walk.filter(foundPath -> foundPath.toString().endsWith(".arff")).map(Path::toFile)
 					.collect(Collectors.toList());
 
-			ArffLoader loader = new ArffLoader();
+			
 			for (File arffFile : arffFiles) {
-				logger.info(arffFile.getName());
+				ArffLoader loader = new ArffLoader();
 				loader.setFile(arffFile);
 				Instances fileDataRaw = loader.getDataSet();
-				logger.info("nombre instances lues {}", fileDataRaw.numInstances());
 				for (int i = 0; i < fileDataRaw.numInstances(); i++) {
 					double[] instanceValue = new double[4];
 
@@ -257,7 +256,7 @@ public class CNNFeatures {
 
 					dataRaw.add(new DenseInstance(1.0, instanceValue));
 				}
-				logger.info("nombre instances dans dataraw: {}", dataRaw.numInstances());
+							
 				loader.reset();
 
 			}
