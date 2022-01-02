@@ -184,7 +184,7 @@ public class CNNTraining {
 				.numClasses(numClasses).build();
 
 		FineTuneConfiguration fineTuneConf = new FineTuneConfiguration.Builder().seed(randomSeed)
-	            .inferenceWorkspaceMode(WorkspaceMode.ENABLED)
+	            .inferenceWorkspaceMode(WorkspaceMode.NONE)
 	            .trainingWorkspaceMode(WorkspaceMode.NONE)
 				.updater(new Nesterovs(0.01, 0.9)).l2(1e-4).build();
 
