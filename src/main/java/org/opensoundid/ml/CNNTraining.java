@@ -181,9 +181,11 @@ public class CNNTraining {
 	protected ComputationGraph getComputationGraph(int numClasses, int randomSeed) throws IOException {
 
 		org.deeplearning4j.zoo.model.Xception net = Xception.builder().cacheMode(CacheMode.NONE)
-				.workspaceMode(WorkspaceMode.ENABLED).numClasses(numClasses).build();
+				.numClasses(numClasses).build();
 
 		FineTuneConfiguration fineTuneConf = new FineTuneConfiguration.Builder().seed(randomSeed)
+	            .inferenceWorkspaceMode(WorkspaceMode.ENABLED)
+	            .trainingWorkspaceMode(WorkspaceMode.NONE)
 				.updater(new Nesterovs(0.01, 0.9)).l2(1e-4).build();
 
 		ComputationGraph computationGraph = (ComputationGraph) net.initPretrained(PretrainedType.IMAGENET);
