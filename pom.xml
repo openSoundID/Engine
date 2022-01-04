@@ -270,6 +270,11 @@
 			<id>cuda-11.2</id>
 			<dependencies>
 				<dependency>
+					<groupId>org.bytedeco</groupId>
+					<artifactId>cuda-platform-redist</artifactId>
+					<version>11.2-8.1-1.5.5</version>
+				</dependency>
+				<dependency>
 					<groupId>org.nd4j</groupId>
 					<artifactId>nd4j-cuda-11.2</artifactId>
 					<version>${dl4j-master.version}</version>
