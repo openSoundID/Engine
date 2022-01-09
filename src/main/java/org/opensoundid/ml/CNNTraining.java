@@ -19,6 +19,7 @@ import org.deeplearning4j.earlystopping.scorecalc.DataSetLossCalculator;
 import org.deeplearning4j.earlystopping.termination.MaxEpochsTerminationCondition;
 import org.deeplearning4j.earlystopping.termination.MaxTimeIterationTerminationCondition;
 import org.deeplearning4j.earlystopping.trainer.EarlyStoppingGraphTrainer;
+import org.deeplearning4j.earlystopping.trainer.IEarlyStoppingTrainer;
 import org.deeplearning4j.nn.conf.CacheMode;
 import org.deeplearning4j.nn.conf.WorkspaceMode;
 import org.deeplearning4j.nn.conf.layers.GlobalPoolingLayer;
@@ -34,8 +35,8 @@ import org.deeplearning4j.zoo.PretrainedType;
 import org.deeplearning4j.zoo.model.Xception;
 import org.nd4j.linalg.activations.Activation;
 import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
-import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
+import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
 import org.opensoundid.configuration.EngineConfiguration;
@@ -103,6 +104,8 @@ public class CNNTraining {
 			ComputationGraph computationGraph = locationToSaveModelWithUpdater.canRead()
 					? ComputationGraph.load(locationToSaveModelWithUpdater, true)
 					: getComputationGraph(trainingData.numClasses(), randomSeed);
+			
+
 
 			UIServer uiServer = UIServer.getInstance();
 
@@ -121,11 +124,8 @@ public class CNNTraining {
 			DataSetIterator testIter = new RecordReaderDataSetIterator(testReader, testBatchSize,
 					1, testData.numClasses());
 
-			DataNormalization scaler = new ImagePreProcessingScaler(0, 1);
-			scaler.fit(trainingIter);
-
-			trainingIter.setPreProcessor(scaler);
-			testIter.setPreProcessor(scaler);
+			trainingIter.setPreProcessor(new ImagePreProcessingScaler(0, 1));
+			testIter.setPreProcessor(new ImagePreProcessingScaler(0, 1));
 
 			computationGraph.setListeners(new ScoreIterationListener(1), new StatsListener(statsStorage, 1));
 			// Attach the StatsStorage instance to the UI: this allows the contents of the
@@ -139,9 +139,11 @@ public class CNNTraining {
 					.iterationTerminationConditions(new MaxTimeIterationTerminationCondition(maxHour, TimeUnit.HOURS))
 					.modelSaver(new LocalFileGraphSaver(modelDirectoryName)).build();
 
-			EarlyStoppingGraphTrainer trainer = new EarlyStoppingGraphTrainer(esConf, computationGraph, trainingIter);
+			IEarlyStoppingTrainer<ComputationGraph> trainer = new EarlyStoppingGraphTrainer(esConf, computationGraph, trainingIter);
 
+			Nd4j.getMemoryManager().togglePeriodicGc(false);
 			EarlyStoppingResult<ComputationGraph> result = trainer.fit();
+			Nd4j.getMemoryManager().togglePeriodicGc(true);
 
 			// Print out the results:
 			logger.info("Termination reason: {}", result.getTerminationReason());
@@ -184,8 +186,6 @@ public class CNNTraining {
 				.numClasses(numClasses).build();
 
 		FineTuneConfiguration fineTuneConf = new FineTuneConfiguration.Builder().seed(randomSeed)
-	            .inferenceWorkspaceMode(WorkspaceMode.ENABLED)
-	            .trainingWorkspaceMode(WorkspaceMode.ENABLED)
 				.updater(new Nesterovs(0.01, 0.9)).l2(1e-4).build();
 
 		ComputationGraph computationGraph = (ComputationGraph) net.initPretrained(PretrainedType.IMAGENET);

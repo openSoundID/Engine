@@ -195,7 +195,6 @@ public class CNNClassification {
 			DataSetIterator iterator = new RecordReaderDataSetIterator(reader, batchSize, 1, instances.numClasses());
 
 			DataNormalization scaler = new ImagePreProcessingScaler(0, 1);
-			scaler.fit(iterator);
 			iterator.setPreProcessor(scaler);
 
 			eval = computationGraph.evaluate(iterator);
