@@ -20,7 +20,7 @@ public class DSP {
 	private double peakAmplitudePercentile;
 	private int peakMinSequences;
 	private double melSpectraNormalisationPercentile;
-	private String spectrogramImagePath;
+	
 
 	private static final Logger logger = LogManager.getLogger(DSP.class);
 
@@ -33,12 +33,12 @@ public class DSP {
 		peakAmplitudePercentile = config.getDouble("dsp.peakAmplitudePercentile");
 		peakMinSequences = config.getInt("dsp.peakMinSequences");
 		melSpectraNormalisationPercentile = config.getDouble("dsp.melSpectraNormalisation.percentile");
-		spectrogramImagePath=config.getString("dsp.spectrogramsImagePath");
+		
 
 	}
 	
 	public int processMelSpectra(String recordId,int[] chunkIDs, double[][] features, double[] energy,
-			double[] peakdetectPositions, double[] peakdetectAmplitudes) {
+			double[] peakdetectPositions, double[] peakdetectAmplitudes,String spectrogramFilesPath) {
 
 		double[][] concatFeat = new double[features.length][filterBankNumFilters + 1];
 
@@ -79,7 +79,7 @@ public class DSP {
 			
 		}
 
-		return createSpectograms(recordId,melSpectraNormalisation(chunkedFeatures), peakdetectPositions, peakdetectAmplitudes,spectrogramImagePath);
+		return createSpectograms(recordId,melSpectraNormalisation(chunkedFeatures), peakdetectPositions, peakdetectAmplitudes,spectrogramFilesPath);
 
 	}
 	

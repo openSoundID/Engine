@@ -8,7 +8,6 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,7 +36,7 @@ public class SoundAnalyzer {
 	EngineConfiguration config = new EngineConfiguration();
 	FeaturesSpecifications featureSpec = new FeaturesSpecifications(config);
 
-	Instances jsonFileToFeatures(String jsonFilePath) throws Exception {
+	Instances jsonFileToFeatures(String jsonFilePath,String spectrogramFilesPath) throws Exception {
 
 		CNNFeatures mlFeatures = new CNNFeatures();
 		SimpleDateFormat dateFormatter = new SimpleDateFormat("yyyy-MM-dd");
@@ -69,7 +68,7 @@ public class SoundAnalyzer {
 		int numFeatures = ((features != null) && (energy != null) && (chunkIDs != null)
 				&& (peakdetectPositions != null) && (peakdetectAmplitudes != null))
 						? mlFeatures.computeMLFeatures(FilenameUtils.getBaseName(jsonFilePath),peakdetectPositions, peakdetectAmplitudes, chunkIDs, features,
-								energy)
+								energy,spectrogramFilesPath)
 						: 0;
 
 		if (numFeatures!=0) {
@@ -126,7 +125,7 @@ public class SoundAnalyzer {
 						String reportName = jsonFilePath.substring(0, jsonFilePath.lastIndexOf('.')) + ".txt";
 						if (!Files.exists(Paths.get(reportName))) {
 							
-							Instances instances = jsonFileToFeatures(jsonFilePath);
+							Instances instances = jsonFileToFeatures(jsonFilePath, recordDirectory);
 							if (instances.isEmpty()) {
 
 								Files.write(Paths.get(reportName), "Empty instance\n".getBytes(),
@@ -134,7 +133,7 @@ public class SoundAnalyzer {
 
 							} else {
 								
-								double[][] resultat = classification.evaluate(instances);
+								double[][] resultat = classification.evaluate(instances,recordDirectory);
       							Map<Integer, Long> scores = engine.computeScore(resultat);
 								Map<Integer, Long> analyzedScores = scoreAnalyzer.analyzeScore(scores);
 								analyzedScores.forEach((k, v) -> {

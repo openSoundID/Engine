@@ -116,7 +116,7 @@ public class CNNFeatures {
 
 	}
 
-	void computeAllFeatures(String jsonDirectory, String featuresDirectory) {
+	void computeAllFeatures(String jsonDirectory, String featuresDirectory,String spectrogramFilesPath) {
 		List<File> jsonFiles;
 		try (Session session = JpaUtil.getSessionFactory().openSession();
 				Stream<Path> walk = Files.walk(Paths.get(jsonDirectory))) {
@@ -134,7 +134,7 @@ public class CNNFeatures {
 					if (record != null) {
 						if (record.isEnabled()) {
 							computeMLNormalizedFeature(jsonDirectory, featuresDirectory, recordId,
-									record.getBird().getId(), record.getDate(), record.getTime());
+									record.getBird().getId(), record.getDate(), record.getTime(),spectrogramFilesPath);
 						} else {
 							logger.info("Record {} is disabled", recordId);
 						}
@@ -334,14 +334,14 @@ public class CNNFeatures {
 	}
 
 	public int computeMLFeatures(String recordId, double[] peakdetectPositions, double[] peakdetectAmplitudes,
-			int[] chunkIDs, double[][] features, double[] energy) {
+			int[] chunkIDs, double[][] features, double[] energy,String spectrogramFilesPath) {
 
-		return dsp.processMelSpectra(recordId, chunkIDs, features, energy, peakdetectPositions, peakdetectAmplitudes);
+		return dsp.processMelSpectra(recordId, chunkIDs, features, energy, peakdetectPositions, peakdetectAmplitudes,spectrogramFilesPath);
 
 	}
 
 	void computeMLNormalizedFeature(String jsonDirectory, String featuresDirectory, String recordId, int birdID,
-			String date, String time) {
+			String date, String time,String spectrogramFilesPath) {
 
 		try {
 
@@ -368,7 +368,7 @@ public class CNNFeatures {
 			if ((features != null) && (energy != null) && (chunkIDs != null) && (peakdetectPositions != null)
 					&& (peakdetectAmplitudes != null)) {
 				int numSpectograms = computeMLFeatures(recordId, peakdetectPositions, peakdetectAmplitudes, chunkIDs,
-						features, energy);
+						features, energy,spectrogramFilesPath);
 
 				// Directory creation
 				Path path = Paths.get(featuresDirectory);
@@ -400,9 +400,9 @@ public class CNNFeatures {
 			CNNFeatures features = new CNNFeatures();
 
 			features.computeAllFeatures(engineConfiguration.getString("CNNFeatures.alsoJsonDirectory"),
-					engineConfiguration.getString("CNNFeatures.alsoFeaturesDirectory"));
+					engineConfiguration.getString("CNNFeatures.alsoFeaturesDirectory"),engineConfiguration.getString("CNNFeatures.alsoSpectrogramDirectory"));
 			features.computeAllFeatures(engineConfiguration.getString("CNNFeatures.jsonDirectory"),
-					engineConfiguration.getString("CNNFeatures.featuresDirectory"));
+					engineConfiguration.getString("CNNFeatures.featuresDirectory"),engineConfiguration.getString("CNNFeatures.SpectrogramDirectory"));
 			features.concateAllCNNArffFilesForTraining();
 
 			features.concateAllCNNArffFilesForTestDataset(

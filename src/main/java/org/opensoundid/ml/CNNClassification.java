@@ -45,7 +45,6 @@ public class CNNClassification {
 	private ComputationGraph computationGraph;
 
 	private String modelFileName;
-	private String spectrogramsDirectory;
 	private int batchSize;
 
 	public CNNClassification() {
@@ -55,8 +54,6 @@ public class CNNClassification {
 			EngineConfiguration engineConfiguration = new EngineConfiguration();
 			modelFileName = engineConfiguration.getString("CNNClassification.modelFileName");
 			batchSize = engineConfiguration.getInt("CNNClassification.batchSize");
-			spectrogramsDirectory = engineConfiguration.getString("CNNClassification.spectrogramsDirectory");
-
 			File modelLocation = new File(modelFileName);
 			logger.info("Loading computationGraph model: {}", modelFileName);
 			computationGraph = ComputationGraph.load(modelLocation, false);
@@ -68,7 +65,7 @@ public class CNNClassification {
 
 	}
 
-	protected ImageRecordReader getImageRecordReader(Instances data) throws IOException {
+	protected ImageRecordReader getImageRecordReader(Instances data,String spectrogramsDirectory) throws IOException {
 
 		ArffMetaDataLabelGenerator labelGenerator = new ArffMetaDataLabelGenerator(data, spectrogramsDirectory);
 		ImageRecordReader reader = new ImageRecordReader(299, 299, 3, labelGenerator);
@@ -78,11 +75,11 @@ public class CNNClassification {
 		return reader;
 	}
 
-	public double[][] distributionsForInstances(Instances instances) throws IOException {
+	public double[][] distributionsForInstances(Instances instances,String spectrogramsDirectory) throws IOException {
 
 		// Get predictions
 
-		ImageRecordReader imageRecordReader = getImageRecordReader(instances);
+		ImageRecordReader imageRecordReader = getImageRecordReader(instances,spectrogramsDirectory);
 
 		DataSetIterator dataSetIterator = new RecordReaderDataSetIterator(imageRecordReader, batchSize, 1,
 				instances.numClasses());
@@ -123,7 +120,7 @@ public class CNNClassification {
 		return predictions;
 	}
 
-	public double[][] evaluate(Instances instances) {
+	public double[][] evaluate(Instances instances,String spectrogramsDirectory) {
 
 		double[][] resultat = null;
 
@@ -132,7 +129,7 @@ public class CNNClassification {
 			int numTestInstances = instances.numInstances();
 			logger.info("There are {} instances to evaluate", numTestInstances);
 
-			resultat = distributionsForInstances(instances);
+			resultat = distributionsForInstances(instances,spectrogramsDirectory);
 
 		} catch (Exception ex) {
 
@@ -143,7 +140,7 @@ public class CNNClassification {
 
 	}
 
-	public double[] evaluateScore(Instances instances) {
+	public double[] evaluateScore(Instances instances,String spectrogramsDirectory) {
 
 		double[] resultat = new double[instances.numClasses()];
 		double[] score = new double[instances.numClasses()];
@@ -154,7 +151,7 @@ public class CNNClassification {
 			int numInstances = instances.numInstances();
 			logger.info("There are {} test instances", numInstances);
 
-			double[][] predictionDistribution = distributionsForInstances(instances);
+			double[][] predictionDistribution = distributionsForInstances(instances,spectrogramsDirectory);
 
 			// Loop over each test instance.
 			for (int i = 0; i < numInstances; i++) {
@@ -185,13 +182,13 @@ public class CNNClassification {
 
 	}
 
-	public Evaluation predict(Instances instances) {
+	public Evaluation predict(Instances instances,String spectrogramsDirectory) {
 
 		Evaluation eval = null;
 
 		try {
 
-			ImageRecordReader reader = getImageRecordReader(instances);
+			ImageRecordReader reader = getImageRecordReader(instances,spectrogramsDirectory);
 			DataSetIterator iterator = new RecordReaderDataSetIterator(reader, batchSize, 1, instances.numClasses());
 
 			DataNormalization scaler = new ImagePreProcessingScaler(0, 1);
@@ -213,21 +210,26 @@ public class CNNClassification {
 		logger.info("start CNN classification");
 		Instant start = Instant.now();
 		CommandLineParser parser = new DefaultParser();
+		
 
 		Options options = new Options();
 		options.addOption(Option.builder("arffTestDirectory").longOpt("arffTestDirectory").desc("Arff Test Directory")
-				.required().hasArg().argName("File Name").build());
+				.required().hasArg().argName("Arff Test Directory").build());
+		options.addOption(Option.builder("spectrogramsDirectory").longOpt("spectrogramsDirectory").desc("spectrograms Directory")
+				.required().hasArg().argName("spectrograms Directory").build());
 
 		String arffTestDirectory = "arffTestDirectory";
+		String spectrogramsDirectory = "spectrogramsDirectory";
 
 		try {
 			// parse the command line arguments
 			CommandLine line = parser.parse(options, args);
 
 			// validate that arguments has been set
-			if (line.hasOption("arffTestDirectory")) {
+			if (line.hasOption("arffTestDirectory")&&line.hasOption("spectrogramsDirectory")) {
 
 				arffTestDirectory = line.getOptionValue("arffTestDirectory");
+				spectrogramsDirectory=line.getOptionValue("spectrogramsDirectory");
 
 			} else {
 				HelpFormatter formatter = new HelpFormatter();
@@ -258,7 +260,7 @@ public class CNNClassification {
 
 				if (evaluation.numInstances() > 0) {
 
-					Evaluation resultat = classification.predict(evaluation);
+					Evaluation resultat = classification.predict(evaluation,spectrogramsDirectory);
 
 					resultats.put(arffFile.getName(), resultat);
 					logger.info(arffFile.getName());

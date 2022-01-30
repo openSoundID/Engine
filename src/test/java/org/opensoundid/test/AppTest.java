@@ -1,4 +1,4 @@
-package fr.balbucam.engine;
+package org.opensoundid.test;
 
 import junit.framework.Test;
 import junit.framework.TestCase;
