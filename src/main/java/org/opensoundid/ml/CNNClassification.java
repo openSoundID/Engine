@@ -34,6 +34,7 @@ import org.nd4j.linalg.dataset.api.iterator.DataSetIterator;
 import org.nd4j.linalg.dataset.api.preprocessor.DataNormalization;
 import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.opensoundid.configuration.EngineConfiguration;
+import org.opensoundid.model.impl.FeaturesSpecifications;
 
 import weka.core.Instances;
 import weka.core.converters.ArffLoader;
@@ -46,12 +47,13 @@ public class CNNClassification {
 
 	private String modelFileName;
 	private int batchSize;
+	EngineConfiguration engineConfiguration = new EngineConfiguration();
+	FeaturesSpecifications featureSpec = new FeaturesSpecifications(engineConfiguration);
 
 	public CNNClassification() {
 
 		try {
 
-			EngineConfiguration engineConfiguration = new EngineConfiguration();
 			modelFileName = engineConfiguration.getString("CNNClassification.modelFileName");
 			batchSize = engineConfiguration.getInt("CNNClassification.batchSize");
 			File modelLocation = new File(modelFileName);
@@ -89,7 +91,7 @@ public class CNNClassification {
 
 		dataSetIterator.setPreProcessor(scaler);
 
-		double[][] predictions = new double[instances.numInstances()][instances.numClasses()];
+		double[][] predictions = new double[instances.numInstances()][featureSpec.getNumOfClass()];
 
 		int offset = 0;
 		boolean next = dataSetIterator.hasNext();
@@ -103,7 +105,7 @@ public class CNNClassification {
 
 			// Build weka distribution output
 			for (int i = 0; i < currentBatchSize; i++) {
-				for (int j = 0; j < instances.numClasses(); j++) {
+				for (int j = 0; j < featureSpec.getNumOfClass(); j++) {
 					predictions[i + offset][j] = predBatch.getDouble(i, j);
 				}
 			}
@@ -120,7 +122,7 @@ public class CNNClassification {
 		return predictions;
 	}
 
-	public double[][] evaluate(Instances instances,String spectrogramsDirectory) {
+	public double[][] predict(Instances instances,String spectrogramsDirectory) {
 
 		double[][] resultat = null;
 
@@ -182,7 +184,7 @@ public class CNNClassification {
 
 	}
 
-	public Evaluation predict(Instances instances,String spectrogramsDirectory) {
+	public Evaluation evaluate(Instances instances,String spectrogramsDirectory) {
 
 		Evaluation eval = null;
 
@@ -260,7 +262,7 @@ public class CNNClassification {
 
 				if (evaluation.numInstances() > 0) {
 
-					Evaluation resultat = classification.predict(evaluation,spectrogramsDirectory);
+					Evaluation resultat = classification.evaluate(evaluation,spectrogramsDirectory);
 
 					resultats.put(arffFile.getName(), resultat);
 					logger.info(arffFile.getName());

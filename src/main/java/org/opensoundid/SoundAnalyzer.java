@@ -133,7 +133,7 @@ public class SoundAnalyzer {
 
 							} else {
 								
-								double[][] resultat = classification.evaluate(instances,recordDirectory);
+								double[][] resultat = classification.predict(instances,recordDirectory);
       							Map<Integer, Long> scores = engine.computeScore(resultat);
 								Map<Integer, Long> analyzedScores = scoreAnalyzer.analyzeScore(scores);
 								analyzedScores.forEach((k, v) -> {
