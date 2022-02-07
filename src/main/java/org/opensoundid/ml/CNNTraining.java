@@ -213,9 +213,11 @@ public class CNNTraining {
 			Instant end = Instant.now();
 			logger.info("CNN Training process takes:{}", Duration.between(start, end));
 			logger.info("End CNN Training");
+			System.exit(0);
 
 		} catch (Exception ex) {
 			logger.error(ex.getMessage(), ex);
+			System.exit(0);
 
 		}
 	}
