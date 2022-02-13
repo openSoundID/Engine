@@ -178,7 +178,7 @@ public class DSP {
 				}
 			}
 		}
-		logger.info("corrected indice = {}", correctedIndice);
+		
 		return correctedIndice;
 
 	}

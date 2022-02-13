@@ -118,6 +118,10 @@ public class CNNClassification {
 		for (int i = 0; i < predictions.length; i++) {
 			// only normalise if we're dealing with classification
 			weka.core.Utils.normalize(predictions[i]);
+			for(int j=0;j<featureSpec.getNumOfClass();j++)
+			{
+				predictions[i][j]=predictions[i][j]*100;
+			}
 		}
 		return predictions;
 	}
