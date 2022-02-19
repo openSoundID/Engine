@@ -160,7 +160,7 @@ public class SoundAnalyzer {
 												.format(Files.getLastModifiedTime(Paths.get(jsonFilePath)).toMillis());
 										BirdObservation birdObservation = new BirdObservation(fileDate, birdId);
 										Files.write(Paths.get(reportName),
-												String.format("signature %d:%d%n", birdId, score).getBytes(),
+												String.format("class %d:%d%n", birdId, score).getBytes(),
 												StandardOpenOption.CREATE, StandardOpenOption.APPEND);
 										scoreLogger.logScore(Paths.get(jsonFilePath).getFileName().toString(), fileDate,
 												birdId, featureSpec.findBirdName(birdId), score);
