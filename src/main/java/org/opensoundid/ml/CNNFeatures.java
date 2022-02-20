@@ -215,9 +215,6 @@ public class CNNFeatures {
 			saver.setFile(new File(subSampleArffTestFiles));
 			saver.writeBatch();
 
-			saver.setInstances(dataRaw);
-			saver.setFile(new File(arffTrainingFiles));
-			saver.writeBatch();
 
 		} catch (Exception e) {
 
@@ -401,7 +398,7 @@ public class CNNFeatures {
 
 			features.computeAllFeatures(engineConfiguration.getString("CNNFeatures.alsoJsonDirectory"),
 					engineConfiguration.getString("CNNFeatures.alsoFeaturesDirectory"),engineConfiguration.getString("CNNFeatures.alsoSpectrogramDirectory"));
-			features.computeAllFeatures(engineConfiguration.getString("CNNFeatures.jsonDirectory"),
+			features.computeAllFeatures(engineConfiguration.getString("CNNFeatures.jsonDirectory"),//
 					engineConfiguration.getString("CNNFeatures.featuresDirectory"),engineConfiguration.getString("CNNFeatures.SpectrogramDirectory"));
 			features.concateAllCNNArffFilesForTraining();
 
