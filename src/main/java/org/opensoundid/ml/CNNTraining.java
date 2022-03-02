@@ -15,7 +15,7 @@ import org.deeplearning4j.datasets.datavec.RecordReaderDataSetIterator;
 import org.deeplearning4j.earlystopping.EarlyStoppingConfiguration;
 import org.deeplearning4j.earlystopping.EarlyStoppingResult;
 import org.deeplearning4j.earlystopping.saver.LocalFileGraphSaver;
-import org.deeplearning4j.earlystopping.scorecalc.DataSetLossCalculator;
+import org.deeplearning4j.earlystopping.scorecalc.ClassificationScoreCalculator;
 import org.deeplearning4j.earlystopping.termination.MaxEpochsTerminationCondition;
 import org.deeplearning4j.earlystopping.termination.MaxTimeIterationTerminationCondition;
 import org.deeplearning4j.earlystopping.trainer.EarlyStoppingGraphTrainer;
@@ -39,6 +39,7 @@ import org.nd4j.linalg.dataset.api.preprocessor.ImagePreProcessingScaler;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.learning.config.Nesterovs;
 import org.nd4j.linalg.lossfunctions.LossFunctions;
+import org.nd4j.evaluation.classification.Evaluation;
 import org.opensoundid.configuration.EngineConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -104,14 +105,10 @@ public class CNNTraining {
 			ComputationGraph computationGraph = locationToSaveModelWithUpdater.canRead()
 					? ComputationGraph.load(locationToSaveModelWithUpdater, true)
 					: getComputationGraph(trainingData.numClasses(), randomSeed);
-			
-
-
-			UIServer uiServer = UIServer.getInstance();
-
+	
 			// Configure where the network information (gradients, score vs. time etc) is to
 			// be stored. Here: store in memory.
-			StatsStorage statsStorage = new InMemoryStatsStorage();
+			//StatsStorage statsStorage = new InMemoryStatsStorage();
 
 			// Stratify and split the data
 			Random rand = new Random(0);
@@ -127,19 +124,20 @@ public class CNNTraining {
 			trainingIter.setPreProcessor(new ImagePreProcessingScaler(0, 1));
 			testIter.setPreProcessor(new ImagePreProcessingScaler(0, 1));
 
-			computationGraph.setListeners(new ScoreIterationListener(1), new StatsListener(statsStorage, 1));
+			computationGraph.setListeners(new ScoreIterationListener(1));
 			// Attach the StatsStorage instance to the UI: this allows the contents of the
 			// StatsStorage to be visualized
-			uiServer.attach(statsStorage);
+			//uiServer.attach(statsStorage);
 
 			EarlyStoppingConfiguration<ComputationGraph> esConf = new EarlyStoppingConfiguration.Builder<ComputationGraph>()
 					.epochTerminationConditions(new MaxEpochsTerminationCondition(maxEpochsTermination))
-					.scoreCalculator(new DataSetLossCalculator(testIter, true))
+					.scoreCalculator(new ClassificationScoreCalculator(Evaluation.Metric.ACCURACY,testIter))
 					.evaluateEveryNEpochs(evaluateEveryNEpochs)
 					.iterationTerminationConditions(new MaxTimeIterationTerminationCondition(maxHour, TimeUnit.HOURS))
 					.modelSaver(new LocalFileGraphSaver(modelDirectoryName)).build();
 
 			IEarlyStoppingTrainer<ComputationGraph> trainer = new EarlyStoppingGraphTrainer(esConf, computationGraph, trainingIter);
+			
 
 			Nd4j.getMemoryManager().togglePeriodicGc(false);
 			EarlyStoppingResult<ComputationGraph> result = trainer.fit();
@@ -184,12 +182,14 @@ public class CNNTraining {
 
 		org.deeplearning4j.zoo.model.Xception net = Xception.builder().cacheMode(CacheMode.NONE)
 				.numClasses(numClasses).build();
-
+		
 		FineTuneConfiguration fineTuneConf = new FineTuneConfiguration.Builder().seed(randomSeed)
-				.updater(new Nesterovs(0.01, 0.9)).l2(1e-4).build();
+				.updater(new Nesterovs(0.01, 0.9)).l2(1e-4).trainingWorkspaceMode(WorkspaceMode.NONE).inferenceWorkspaceMode(WorkspaceMode.NONE).build();
+
 
 		ComputationGraph computationGraph = (ComputationGraph) net.initPretrained(PretrainedType.IMAGENET);
-
+		
+		
 		TransferLearning.GraphBuilder graphBuilder = new TransferLearning.GraphBuilder(computationGraph)
 				.fineTuneConfiguration(fineTuneConf).setFeatureExtractor("predictions")
 				.removeVertexKeepConnections("predictions")
