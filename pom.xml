@@ -272,16 +272,16 @@
 				<dependency>
 					<groupId>org.bytedeco</groupId>
 					<artifactId>cuda-platform-redist</artifactId>
-					<version>11.4-8.2-1.5.6</version>
+					<version>11.6-8.3-1.5.7</version>
 				</dependency>
 				<dependency>
 					<groupId>org.nd4j</groupId>
-					<artifactId>nd4j-cuda-11.4</artifactId>
+					<artifactId>nd4j-cuda-11.6</artifactId>
 					<version>${dl4j-master.version}</version>
 				</dependency>
 				<dependency>
 					<groupId>org.nd4j</groupId>
-					<artifactId>nd4j-cuda-11.4</artifactId>
+					<artifactId>nd4j-cuda-11.6</artifactId>
 					<version>${dl4j-master.version}</version>
 					<classifier>linux-x86_64-cudnn</classifier>
 				</dependency>
